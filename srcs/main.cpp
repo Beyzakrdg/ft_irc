@@ -2,15 +2,15 @@
 #include <iostream>
 #include <cstdlib>
 
-int main(int ac, char *av[])
+int main(int argc, char *argv[])
 {
-    if (ac != 3)
+    if (argc != 3)
     {
         std::cerr << "Please use this command: ./ircserv <port> <password>" << std::endl;
         return (1);
     }
-    int port = std::atoi(av[1]);
-    std::string password = av[2];
+    int port = std::atoi(argv[1]);
+    std::string password = argv[2];
     try
     {
         Server ircServer(port, password);
