@@ -78,6 +78,7 @@ bool Server::getClientData(int sockFd)
         std::cout << "Client baglantisi koptu: " << sockFd << std::endl;
         close(sockFd);
         clientBuff.erase(sockFd);
+        clients.erase(sockFd);
         return false; 
     }
     buff[countByte] = '\0';
@@ -87,7 +88,7 @@ bool Server::getClientData(int sockFd)
         std::string line = clientBuff[sockFd].substr(0, pos);
         if (!line.empty() && line[line.length() - 1] == '\r')
             line.erase(line.length() - 1);
-        std::cout << "Gelen : [" << line << "]" << std::endl;
+        parseMessage(sockFd, line);
         clientBuff[sockFd].erase(0, pos + 1);
     }
     return true;
@@ -111,6 +112,161 @@ void Server::acceptConnection()
     clientPollFd.fd = sockFd;
     clientPollFd.events = POLLIN;
     fds.push_back(clientPollFd);
+    
+    clients.insert(std::make_pair(sockFd, Client(sockFd)));
 
     std::cout << "New client connected: " << sockFd << std::endl;
+}
+
+void Server::parseMessage(int sockFd, std::string line)
+{
+    if (line.empty())
+        return;
+
+    std::string cmd;
+    std::vector<std::string> args;
+    size_t i = 0;
+
+    while (i < line.size() && (line[i] == ' ' || line[i] == '\t'))
+        i++;
+
+    size_t cmdStart = i;
+    while (i < line.size() && line[i] != ' ' && line[i] != '\t')
+        i++;
+    cmd = line.substr(cmdStart, i - cmdStart);
+
+    while (i < line.size())
+    {
+        while (i < line.size() && (line[i] == ' ' || line[i] == '\t'))
+            i++;
+        if (i == line.size())
+            break;
+
+        if (line[i] == ':')
+        {
+            args.push_back(line.substr(i + 1));
+            break;
+        }
+        else
+        {
+            size_t argStart = i;
+            while (i < line.size() && line[i] != ' ' && line[i] != '\t')
+                i++;
+            args.push_back(line.substr(argStart, i - argStart));
+        }
+    }
+
+    executeCommand(sockFd, cmd, args);
+}
+
+void Server::executeCommand(int sockFd, std::string cmd, std::vector<std::string> args)
+{
+    std::cout << "Komut: " << cmd << " (Client FD: " << sockFd << ")" << std::endl;
+    for (size_t i = 0; i < args.size(); i++)
+    {
+        std::cout << " - Parametre " << i << ": " << args[i] << std::endl;
+    }
+
+    std::map<int, Client>::iterator it = clients.find(sockFd);
+    if (it == clients.end())
+        return;
+    Client &client = it->second;
+
+    if (cmd == "PASS")
+    {
+        if (args.empty()) {
+            std::string msg = "461 " + cmd + " :Not enough parameters\r\n";
+            send(sockFd, msg.c_str(), msg.length(), 0);
+            return;
+        }
+        if (args[0] == psswd) {
+            client.setHasPassword(true);
+            std::cout << "Client " << sockFd << " password correct." << std::endl;
+        } else {
+            std::string msg = "464 :Password incorrect\r\n";
+            send(sockFd, msg.c_str(), msg.length(), 0);
+        }
+    }
+    else if (cmd == "NICK")
+    {
+        if (!client.getHasPassword()) return;
+        if (args.empty()) {
+            std::string msg = "431 :No nickname given\r\n";
+            send(sockFd, msg.c_str(), msg.length(), 0);
+            return;
+        }
+        client.setdisplayNick(args[0]);
+    }
+    else if (cmd == "USER")
+    {
+        if (!client.getHasPassword()) return;
+        if (args.size() < 4) {
+            std::string msg = "461 " + cmd + " :Not enough parameters\r\n";
+            send(sockFd, msg.c_str(), msg.length(), 0);
+            return;
+        }
+        client.setuserName(args[0]);
+        client.setsuccessLogin(true);
+
+        std::string nick = client.getdisplayNick();
+        std::string welcome = ":server 001 " + nick + " :Welcome to the ft_irc network " + nick + "\r\n";
+        send(sockFd, welcome.c_str(), welcome.length(), 0);
+        std::cout << "Client " << sockFd << " successfully registered!" << std::endl;
+    }
+    else if (cmd == "JOIN")
+    {
+        if (!client.getsuccesLogin()) return;
+        if (args.empty()) {
+            std::string msg = "461 " + cmd + " :Not enough parameters\r\n";
+            send(sockFd, msg.c_str(), msg.length(), 0);
+            return;
+        }
+
+        std::string channelName = args[0];
+        
+        // Kanalı oluştur veya bul
+        if (channels.find(channelName) == channels.end()) {
+            channels.insert(std::make_pair(channelName, Channel(channelName)));
+            channels.at(channelName).addOperator(&client); // İlk giren operatör olur
+        }
+        
+        Channel &chan = channels.at(channelName);
+        chan.addClient(&client);
+        
+        // Herkese duyur
+        std::string joinMsg = ":" + client.getdisplayNick() + " JOIN :" + channelName + "\r\n";
+        chan.broadcastMessage(joinMsg, NULL);
+    }
+    else if (cmd == "PRIVMSG")
+    {
+        if (!client.getsuccesLogin()) return;
+        if (args.size() < 2) {
+            std::string msg = "412 :No text to send\r\n";
+            send(sockFd, msg.c_str(), msg.length(), 0);
+            return;
+        }
+
+        std::string target = args[0];
+        std::string message = args[1];
+        
+        if (target[0] == '#') {
+            // Kanala mesaj
+            if (channels.find(target) != channels.end()) {
+                Channel &chan = channels.at(target);
+                if (chan.isClientInChannel(&client)) {
+                    std::string privMsg = ":" + client.getdisplayNick() + " PRIVMSG " + target + " :" + message + "\r\n";
+                    chan.broadcastMessage(privMsg, &client);
+                }
+            }
+        } else {
+            // Özel mesaj (kullanıcıya) - şimdilik basit döngü ile
+            for (std::map<int, Client>::iterator itClient = clients.begin(); itClient != clients.end(); ++itClient) {
+                if (itClient->second.getdisplayNick() == target) {
+                    std::string privMsg = ":" + client.getdisplayNick() + " PRIVMSG " + target + " :" + message + "\r\n";
+                    send(itClient->first, privMsg.c_str(), privMsg.length(), 0);
+                    break;
+                }
+            }
+        }
+    }
 }
