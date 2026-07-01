@@ -1,7 +1,7 @@
 #include "../includes/Client.hpp"
 
 Client::Client(int clientFd)
-    : fd(clientFd), displayNick(""), userName(""), successLogin(false),
+    : fd(clientFd), displayNick(""), userName(""), hasPassword(false), successLogin(false),
       buffer("") {}
 
 int Client::getFd() const
@@ -31,6 +31,14 @@ void Client::setuserName(std::string user)
 void Client::setsuccessLogin(bool status)
 {
     successLogin = status;
+}
+bool Client::getHasPassword() const
+{
+    return hasPassword;
+}
+void Client::setHasPassword(bool status)
+{
+    hasPassword = status;
 }
 void Client::appendToBuffer(std::string data)
 {
