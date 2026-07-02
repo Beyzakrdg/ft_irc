@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <vector>
+#include <iostream>
 #include "Client.hpp"
 #include "Channel.hpp"
 
@@ -21,6 +22,20 @@ private:
   std::map<int, std::string> clientBuff;
   std::map<int, Client> clients;
   std::map<std::string, Channel> channels;
+
+  void cmdPass(int sockFd, Client &client, std::vector<std::string> args);
+  void cmdNick(int sockFd, Client &client, std::vector<std::string> args);
+  void cmdUser(int sockFd, Client &client, std::vector<std::string> args);
+  void cmdJoin(int sockFd, Client &client, std::vector<std::string> args);
+  void cmdMode(int sockFd, Client &client, std::vector<std::string> args);
+  void cmdTopic(int sockFd, Client &client, std::vector<std::string> args);
+  void cmdKick(int sockFd, Client &client, std::vector<std::string> args);
+  void cmdInvite(int sockFd, Client &client, std::vector<std::string> args);
+  void cmdPrivmsg(int sockFd, Client &client, std::vector<std::string> args);
+
+  Client* getClientByNick(std::string nick);
+  Channel* getChannelByName(std::string name);
+  void sendMessage(int fd, std::string msg);
 
 public:
   Server(int port, std::string password);
