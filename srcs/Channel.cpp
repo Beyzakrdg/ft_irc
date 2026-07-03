@@ -28,9 +28,7 @@ void Channel::setTopic(std::string topic)
 void Channel::addClient(Client* client)
 {
     if (!isClientInChannel(client))
-    {
         clients.push_back(client);
-    }
 }
 
 void Channel::removeClient(Client* client)
@@ -89,9 +87,7 @@ void Channel::broadcastMessage(std::string message, Client* excludeClient)
     for (size_t i = 0; i < clients.size(); i++)
     {
         if (clients[i] != excludeClient)
-        {
             send(clients[i]->getFd(), message.c_str(), message.length(), 0);
-        }
     }
 }
 
