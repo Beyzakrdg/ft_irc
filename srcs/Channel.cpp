@@ -28,9 +28,7 @@ void Channel::setTopic(std::string topic)
 void Channel::addClient(Client* client)
 {
     if (!isClientInChannel(client))
-    {
         clients.push_back(client);
-    }
 }
 
 void Channel::removeClient(Client* client)
@@ -49,9 +47,7 @@ void Channel::removeClient(Client* client)
 void Channel::addOperator(Client* client)
 {
     if (!isOperator(client))
-    {
         operators.push_back(client);
-    }
 }
 
 void Channel::removeOperator(Client* client)
@@ -70,7 +66,8 @@ bool Channel::isClientInChannel(Client* client) const
 {
     for (size_t i = 0; i < clients.size(); i++)
     {
-        if (clients[i] == client) return true;
+        if (clients[i] == client)
+            return true;
     }
     return false;
 }
@@ -79,7 +76,8 @@ bool Channel::isOperator(Client* client) const
 {
     for (size_t i = 0; i < operators.size(); i++)
     {
-        if (operators[i] == client) return true;
+        if (operators[i] == client)
+            return true;
     }
     return false;
 }
@@ -89,9 +87,7 @@ void Channel::broadcastMessage(std::string message, Client* excludeClient)
     for (size_t i = 0; i < clients.size(); i++)
     {
         if (clients[i] != excludeClient)
-        {
             send(clients[i]->getFd(), message.c_str(), message.length(), 0);
-        }
     }
 }
 
@@ -105,7 +101,8 @@ bool Channel::isInvited(std::string nick) const
 {
     for (size_t i = 0; i < invitedNicks.size(); i++)
     {
-        if (invitedNicks[i] == nick) return true;
+        if (invitedNicks[i] == nick)
+            return true;
     }
     return false;
 }

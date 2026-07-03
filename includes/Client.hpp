@@ -21,6 +21,8 @@ public:
   std::string getBuffer() const;
   bool getsuccesLogin() const;
   bool getHasPassword() const;
+  bool isRegistered() const;
+  std::string getuserName() const;
 
   void setdisplayNick(std::string nick);
   void setuserName(std::string user);
