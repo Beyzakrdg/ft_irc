@@ -75,10 +75,7 @@ bool Server::getClientData(int sockFd)
 
     if (countByte <= 0)
     {
-        std::cout << "Client baglantisi koptu: " << sockFd << std::endl;
-        close(sockFd);
-        clientBuff.erase(sockFd);
-        clients.erase(sockFd);
+        disconnectClient(sockFd);
         return false; 
     }
     buff[countByte] = '\0';
@@ -155,6 +152,25 @@ void Server::parseMessage(int sockFd, std::string line)
             args.push_back(line.substr(argStart, i - argStart));
         }
     }
-
     executeCommand(sockFd, cmd, args);
+}
+
+void Server::disconnectClient(int sockFd)
+{
+    std::cout << "Client baglantisi koptu/kesildi: " << sockFd << std::endl;
+    std::map<int, Client>::iterator it = clients.find(sockFd);
+    if (it != clients.end())
+    {
+        Client* clientPtr = &(it->second);
+        std::map<std::string, Channel>::iterator chanIt = channels.begin();
+        while (chanIt != channels.end())
+        {
+            if (chanIt->second.isClientInChannel(clientPtr))
+                chanIt->second.removeClient(clientPtr);
+            ++chanIt;
+        }
+    }
+    close(sockFd);
+    clientBuff.erase(sockFd);
+    clients.erase(sockFd);
 }

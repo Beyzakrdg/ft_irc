@@ -32,6 +32,11 @@ private:
   void cmdKick(int sockFd, Client &client, std::vector<std::string> args);
   void cmdInvite(int sockFd, Client &client, std::vector<std::string> args);
   void cmdPrivmsg(int sockFd, Client &client, std::vector<std::string> args);
+  void cmdPing(int sockFd, Client &client, std::vector<std::string> args);
+  void cmdQuit(int sockFd, Client &client, std::vector<std::string> args);
+  void cmdPart(int sockFd, Client &client, std::vector<std::string> args);
+
+  void disconnectClient(int sockFd);
 
   Client* getClientByNick(std::string nick);
   Channel* getChannelByName(std::string name);
