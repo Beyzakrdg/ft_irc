@@ -4,10 +4,13 @@
 
 void Server::executeCommand(int sockFd, std::string cmd, std::vector<std::string> args)
 {
-    std::cout << "Komut: " << cmd << " (Client FD: " << sockFd << ")" << std::endl;
-    for (size_t i = 0; i < args.size(); i++)
+    if (cmd != "PING")
     {
-        std::cout << " - Parametre " << i << ": " << args[i] << std::endl;
+        std::cout << "Komut: " << cmd << " (Client FD: " << sockFd << ")" << std::endl;
+        for (size_t i = 0; i < args.size(); i++)
+        {
+            std::cout << " - Parametre " << i << ": " << args[i] << std::endl;
+        }
     }
 
     std::map<int, Client>::iterator it = clients.find(sockFd);
@@ -40,7 +43,11 @@ void Server::executeCommand(int sockFd, std::string cmd, std::vector<std::string
     else if (cmd == "PART")
         cmdPart(sockFd, client, args);
     else if (cmd == "CAP")
+    {
+        if (!args.empty() && args[0] == "LS")
+            sendMessage(sockFd, "CAP * LS :\r\n");
         return;
+    }
 }
 
 void Server::cmdPass(int sockFd, Client &client, std::vector<std::string> args)
@@ -348,6 +355,8 @@ void Server::cmdKick(int sockFd, Client &client, std::vector<std::string> args)
     chan.broadcastMessage(kickMsg, NULL);
 
     chan.removeClient(targetClient);
+    if (chan.getClientCount() == 0)
+        channels.erase(channelName);
 }
 
 void Server::cmdInvite(int sockFd, Client &client, std::vector<std::string> args)
@@ -639,4 +648,6 @@ void Server::cmdPart(int sockFd, Client &client, std::vector<std::string> args)
     
     chan.broadcastMessage(partMsg, NULL);
     chan.removeClient(&client);
+    if (chan.getClientCount() == 0)
+        channels.erase(channelName);
 }

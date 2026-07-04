@@ -6,7 +6,6 @@ SRCS_DIR    = srcs/main.cpp srcs/Server.cpp srcs/Commands.cpp srcs/Client.cpp sr
 INCS_DIR    = includes
 
 SRCS        = $(SRCS_DIR)
-
 OBJS        = $(SRCS:.cpp=.o)
 
 all: $(NAME)

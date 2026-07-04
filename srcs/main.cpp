@@ -10,6 +10,11 @@ int main(int argc, char *argv[])
         return (1);
     }
     int port = std::atoi(argv[1]);
+    if (port <= 0 || port > 65535)
+    {
+        std::cerr << "Error: Invalid port number" << std::endl;
+        return (1);
+    }
     std::string password = argv[2];
     try
     {

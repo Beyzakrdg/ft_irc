@@ -167,7 +167,17 @@ void Server::disconnectClient(int sockFd)
         {
             if (chanIt->second.isClientInChannel(clientPtr))
                 chanIt->second.removeClient(clientPtr);
-            ++chanIt;
+            
+            if (chanIt->second.getClientCount() == 0)
+            {
+                std::map<std::string, Channel>::iterator toErase = chanIt;
+                ++chanIt;
+                channels.erase(toErase);
+            }
+            else
+            {
+                ++chanIt;
+            }
         }
     }
     close(sockFd);
