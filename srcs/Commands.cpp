@@ -209,7 +209,7 @@ void Server::cmdPrivmsg(int sockFd, Client &client, std::vector<std::string> arg
         return;
     if (args.size() < 2)
     {
-        std::string msg = "412 :No text to send\r\n";
+        std::string msg = "412 " + client.getdisplayNick() + " :No text to send\r\n";
         sendMessage(sockFd, msg);
         return;
     }
@@ -227,6 +227,16 @@ void Server::cmdPrivmsg(int sockFd, Client &client, std::vector<std::string> arg
                 std::string privMsg = ":" + client.getdisplayNick() + " PRIVMSG " + target + " :" + message + "\r\n";
                 chan.broadcastMessage(privMsg, &client);
             }
+            else
+            {
+                std::string msg = "404 " + client.getdisplayNick() + " " + target + " :Cannot send to channel\r\n";
+                sendMessage(sockFd, msg);
+            }
+        } 
+        else
+        {
+            std::string msg = "401 " + client.getdisplayNick() + " " + target + " :No such nick/channel\r\n";
+            sendMessage(sockFd, msg);
         }
     } 
     else
@@ -236,6 +246,11 @@ void Server::cmdPrivmsg(int sockFd, Client &client, std::vector<std::string> arg
         {
             std::string privMsg = ":" + client.getdisplayNick() + " PRIVMSG " + target + " :" + message + "\r\n";
             sendMessage(targetClient->getFd(), privMsg);
+        }
+        else
+        {
+            std::string msg = "401 " + client.getdisplayNick() + " " + target + " :No such nick/channel\r\n";
+            sendMessage(sockFd, msg);
         }
     }
 }
@@ -365,7 +380,7 @@ void Server::cmdInvite(int sockFd, Client &client, std::vector<std::string> args
         return;
     if (args.size() < 2)
     {
-        std::string msg = "461 INVITE :Not enough parameters\r\n";
+        std::string msg = "461 " + client.getdisplayNick() + " INVITE :Not enough parameters\r\n";
         sendMessage(sockFd, msg);
         return;
     }
@@ -375,7 +390,7 @@ void Server::cmdInvite(int sockFd, Client &client, std::vector<std::string> args
 
     if (channels.find(channelName) == channels.end())
     {
-        std::string msg = "403 " + channelName + " :No such channel\r\n";
+        std::string msg = "403 " + client.getdisplayNick() + " " + channelName + " :No such channel\r\n";
         sendMessage(sockFd, msg);
         return;
     }
@@ -384,22 +399,30 @@ void Server::cmdInvite(int sockFd, Client &client, std::vector<std::string> args
 
     if (!chan.isClientInChannel(&client))
     {
-        std::string msg = "442 " + channelName + " :You're not on that channel\r\n";
+        std::string msg = "442 " + client.getdisplayNick() + " " + channelName + " :You're not on that channel\r\n";
         sendMessage(sockFd, msg);
         return;
     }
+
+    if (chan.isInviteOnly() && !chan.isOperator(&client))
+    {
+        std::string msg = "482 " + client.getdisplayNick() + " " + channelName + " :You're not channel operator\r\n";
+        sendMessage(sockFd, msg);
+        return;
+    }
+
     Client* targetClient = getClientByNick(targetNick);
 
     if (!targetClient)
     {
-        std::string msg = "401 " + targetNick + " :No such nick/channel\r\n";
+        std::string msg = "401 " + client.getdisplayNick() + " " + targetNick + " :No such nick/channel\r\n";
         sendMessage(sockFd, msg);
         return;
     }
 
     if (chan.isClientInChannel(targetClient))
     {
-        std::string msg = "443 " + targetNick + " " + channelName + " :is already on channel\r\n";
+        std::string msg = "443 " + client.getdisplayNick() + " " + targetNick + " " + channelName + " :is already on channel\r\n";
         sendMessage(sockFd, msg);
         return;
     }
