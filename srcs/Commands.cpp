@@ -182,8 +182,15 @@ void Server::cmdJoin(int sockFd, Client &client, std::vector<std::string> args)
         channels.insert(std::make_pair(channelName, Channel(channelName)));
         channels.at(channelName).addOperator(&client);
     }
-    
+
     Channel &chan = channels.at(channelName);
+
+    if (chan.isClientInChannel(&client))
+    {
+        std::string msg = "443 " + client.getdisplayNick() + " " + channelName + " :is already on channel\r\n";
+        sendMessage(sockFd, msg);
+        return;
+    }
     if (chan.isInviteOnly() && !chan.isInvited(client.getdisplayNick()))
     {
         std::string msg = "473 " + channelName + " :Cannot join channel (+i)\r\n";
