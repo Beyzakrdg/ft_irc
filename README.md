@@ -110,4 +110,4 @@ The following resources were used to understand the IRC protocol and socket prog
 - [man 2 poll](https://man7.org/linux/man-pages/man2/poll.2.html)
 - [man 7 socket](https://man7.org/linux/man-pages/man7/socket.7.html)
 
-AI assistance (Google Gemini) was used during development to help identify bugs, improve code quality, implement signal handling, and review protocol compliance. All code was written and reviewed by the project authors.
+AI tools were occasionally consulted for research and documentation purposes. All code was written and understood by the project authors.
