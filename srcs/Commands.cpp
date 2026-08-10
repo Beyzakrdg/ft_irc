@@ -1,9 +1,15 @@
 #include "../includes/Server.hpp"
 #include <cstdlib>
 #include <cstdio>
+#include <cctype>
 
 void Server::executeCommand(int sockFd, std::string cmd, std::vector<std::string> args)
 {
+    for (size_t i = 0; i < cmd.length(); i++)
+    {
+        cmd[i] = std::toupper(cmd[i]);
+    }
+
     if (cmd != "PING")
     {
         std::cout << "Komut: " << cmd << " (Client FD: " << sockFd << ")" << std::endl;
@@ -94,6 +100,26 @@ void Server::cmdNick(int sockFd, Client &client, std::vector<std::string> args)
     {
         std::string nickMsg = ":" + oldNick + " NICK :" + newNick + "\r\n";
         sendMessage(sockFd, nickMsg);
+
+        std::vector<int> targetFds;
+        for (std::map<int, Client>::iterator clIt = clients.begin(); clIt != clients.end(); ++clIt)
+        {
+            int peerFd = clIt->first;
+            if (peerFd == sockFd)
+                continue;
+            for (std::map<std::string, Channel>::iterator chanIt = channels.begin(); chanIt != channels.end(); ++chanIt)
+            {
+                if (chanIt->second.isClientInChannel(&client) && chanIt->second.isClientInChannel(&(clIt->second)))
+                {
+                    targetFds.push_back(peerFd);
+                    break;
+                }
+            }
+        }
+        for (size_t i = 0; i < targetFds.size(); ++i)
+        {
+            sendMessage(targetFds[i], nickMsg);
+        }
     }
     
     if (!client.getsuccesLogin() && client.isRegistered())
@@ -144,6 +170,12 @@ void Server::cmdJoin(int sockFd, Client &client, std::vector<std::string> args)
     }
 
     std::string channelName = args[0];
+    if (channelName.empty() || channelName[0] != '#')
+    {
+        std::string msg = "476 " + client.getdisplayNick() + " " + channelName + " :Bad Channel Mask\r\n";
+        sendMessage(sockFd, msg);
+        return;
+    }
     std::string providedKey = (args.size() > 1) ? args[1] : "";
     if (channels.find(channelName) == channels.end())
     {
@@ -621,15 +653,6 @@ void Server::cmdQuit(int sockFd, Client &client, std::vector<std::string> args)
     }
     
     disconnectClient(sockFd);
-    
-    for (size_t i = 0; i < fds.size(); i++)
-    {
-        if (fds[i].fd == sockFd)
-        {
-            fds.erase(fds.begin() + i);
-            break;
-        }
-    }
 }
 
 void Server::cmdPart(int sockFd, Client &client, std::vector<std::string> args)

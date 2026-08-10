@@ -1,4 +1,5 @@
 #include "../includes/Server.hpp"
+#include <cerrno>
 
 Server::Server(int port, std::string password) : portNo(port), serverFd(-1), psswd(password)
 {
@@ -73,10 +74,17 @@ bool Server::getClientData(int sockFd)
     int countByte = recv(sockFd, buff, sizeof(buff) - 1, 0);
     size_t pos;
 
-    if (countByte <= 0)
+    if (countByte < 0)
+    {
+        if (errno == EAGAIN || errno == EWOULDBLOCK)
+            return true;
+        disconnectClient(sockFd);
+        return false;
+    }
+    else if (countByte == 0)
     {
         disconnectClient(sockFd);
-        return false; 
+        return false;
     }
     buff[countByte] = '\0';
     clientBuff[sockFd] += buff;
@@ -86,6 +94,8 @@ bool Server::getClientData(int sockFd)
         if (!line.empty() && line[line.length() - 1] == '\r')
             line.erase(line.length() - 1);
         parseMessage(sockFd, line);
+        if (clients.find(sockFd) == clients.end())
+            return false;
         clientBuff[sockFd].erase(0, pos + 1);
     }
     return true;
@@ -108,6 +118,7 @@ void Server::acceptConnection()
     struct pollfd clientPollFd;
     clientPollFd.fd = sockFd;
     clientPollFd.events = POLLIN;
+    clientPollFd.revents = 0;
     fds.push_back(clientPollFd);
     
     clients.insert(std::make_pair(sockFd, Client(sockFd)));
