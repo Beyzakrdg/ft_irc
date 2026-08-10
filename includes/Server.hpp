@@ -5,6 +5,7 @@
 #include <map>
 #include <netinet/in.h>
 #include <poll.h>
+#include <signal.h>
 #include <string>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -23,6 +24,9 @@ private:
   std::map<int, Client> clients;
   std::map<std::string, Channel> channels;
 
+  static volatile sig_atomic_t _running;
+  static void signalHandler(int signum);
+  void shutdown();
   void cmdPass(int sockFd, Client &client, std::vector<std::string> args);
   void cmdNick(int sockFd, Client &client, std::vector<std::string> args);
   void cmdUser(int sockFd, Client &client, std::vector<std::string> args);

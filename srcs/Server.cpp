@@ -1,14 +1,41 @@
 #include "../includes/Server.hpp"
 #include <cerrno>
 
+volatile sig_atomic_t Server::_running = 1;
+
+void Server::signalHandler(int signum)
+{
+    (void)signum;
+    Server::_running = 0;
+}
+
 Server::Server(int port, std::string password) : portNo(port), serverFd(-1), psswd(password)
 {
 }
 
 Server::~Server()
 {
+    shutdown();
+}
+
+void Server::shutdown()
+{
+    std::cout << std::endl << "Shutting down server..." << std::endl;
+    for (std::map<int, Client>::iterator it = clients.begin(); it != clients.end(); ++it)
+    {
+        std::string msg = ":server NOTICE * :Server shutting down\r\n";
+        send(it->first, msg.c_str(), msg.length(), 0);
+        close(it->first);
+    }
+    clients.clear();
+    channels.clear();
+    clientBuff.clear();
+    fds.clear();
     if (serverFd != -1)
+    {
         close(serverFd);
+        serverFd = -1;
+    }
 }
 
 void Server::init()
@@ -38,14 +65,22 @@ void Server::init()
     fds.push_back(serverPollFd);
     
     std::cout << "Server started on port " << portNo << std::endl;
+
+    signal(SIGINT, Server::signalHandler);
+    signal(SIGTERM, Server::signalHandler);
+    signal(SIGQUIT, Server::signalHandler);
 }
 
 void Server::run()
 {
-    while (true)
+    while (_running)
     {
-        if (poll(&fds[0], fds.size(), -1) < 0)
+        if (poll(&fds[0], fds.size(), 500) < 0)
+        {
+            if (errno == EINTR)
+                break;
             throw std::runtime_error("Poll failed");
+        }
 
         for (size_t i = 0; i < fds.size(); i++)
         {
@@ -66,6 +101,7 @@ void Server::run()
             }
         }
     }
+    std::cout << "Server stopped." << std::endl;
 }
 
 bool Server::getClientData(int sockFd)
