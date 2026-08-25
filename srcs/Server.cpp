@@ -1,5 +1,4 @@
 #include "../includes/Server.hpp"
-#include <cerrno>
 
 volatile sig_atomic_t Server::_running = 1;
 
@@ -20,7 +19,7 @@ Server::~Server()
 
 void Server::shutdown()
 {
-    std::cout << std::endl << "Shutting down server..." << std::endl;
+
     for (std::map<int, Client>::iterator it = clients.begin(); it != clients.end(); ++it)
     {
         std::string msg = ":server NOTICE * :Server shutting down\r\n";
@@ -30,6 +29,7 @@ void Server::shutdown()
     clients.clear();
     channels.clear();
     clientBuff.clear();
+    outBuffers.clear();
     fds.clear();
     if (serverFd != -1)
     {
@@ -66,18 +66,23 @@ void Server::init()
     
     std::cout << "Server started on port " << portNo << std::endl;
 
-    signal(SIGINT, Server::signalHandler);
-    signal(SIGTERM, Server::signalHandler);
-    signal(SIGQUIT, Server::signalHandler);
+    struct sigaction sa;
+    sa.sa_handler = Server::signalHandler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    sigaction(SIGINT, &sa, NULL);
+    sigaction(SIGTERM, &sa, NULL);
+    sigaction(SIGQUIT, &sa, NULL);
 }
 
 void Server::run()
 {
     while (_running)
     {
-        if (poll(&fds[0], fds.size(), 500) < 0)
+        int pollResult = poll(&fds[0], fds.size(), 500);
+        if (pollResult < 0)
         {
-            if (errno == EINTR)
+            if (!_running)
                 break;
             throw std::runtime_error("Poll failed");
         }
@@ -96,8 +101,13 @@ void Server::run()
                     {
                         fds.erase(fds.begin() + i);
                         i--;
+                        continue;
                     }
                 }
+            }
+            if (fds[i].fd != serverFd && (fds[i].revents & POLLOUT))
+            {
+                flushOutBuffer(fds[i].fd);
             }
         }
     }
@@ -110,14 +120,7 @@ bool Server::getClientData(int sockFd)
     int countByte = recv(sockFd, buff, sizeof(buff) - 1, 0);
     size_t pos;
 
-    if (countByte < 0)
-    {
-        if (errno == EAGAIN || errno == EWOULDBLOCK)
-            return true;
-        disconnectClient(sockFd);
-        return false;
-    }
-    else if (countByte == 0)
+    if (countByte <= 0)
     {
         disconnectClient(sockFd);
         return false;
@@ -135,6 +138,39 @@ bool Server::getClientData(int sockFd)
         clientBuff[sockFd].erase(0, pos + 1);
     }
     return true;
+}
+
+void Server::flushOutBuffer(int sockFd)
+{
+    std::map<int, std::string>::iterator it = outBuffers.find(sockFd);
+    if (it == outBuffers.end() || it->second.empty())
+        return;
+    int sent = send(sockFd, it->second.c_str(), it->second.length(), 0);
+    if (sent > 0)
+    {
+        it->second.erase(0, sent);
+        if (it->second.empty())
+        {
+            outBuffers.erase(it);
+            updatePollEvents(sockFd, POLLIN);
+        }
+    }
+    else if (sent <= 0)
+    {
+        disconnectClient(sockFd);
+    }
+}
+
+void Server::updatePollEvents(int fd, short events)
+{
+    for (size_t i = 0; i < fds.size(); i++)
+    {
+        if (fds[i].fd == fd)
+        {
+            fds[i].events = events;
+            return;
+        }
+    }
 }
 
 void Server::acceptConnection()
@@ -159,7 +195,7 @@ void Server::acceptConnection()
     
     clients.insert(std::make_pair(sockFd, Client(sockFd)));
 
-    std::cout << "New client connected: " << sockFd << std::endl;
+
 }
 
 void Server::parseMessage(int sockFd, std::string line)
@@ -204,16 +240,20 @@ void Server::parseMessage(int sockFd, std::string line)
 
 void Server::disconnectClient(int sockFd)
 {
-    std::cout << "Client baglantisi koptu/kesildi: " << sockFd << std::endl;
+
     std::map<int, Client>::iterator it = clients.find(sockFd);
     if (it != clients.end())
     {
         Client* clientPtr = &(it->second);
+        std::string quitMsg = ":" + clientPtr->getdisplayNick() + " QUIT :Connection lost\r\n";
         std::map<std::string, Channel>::iterator chanIt = channels.begin();
         while (chanIt != channels.end())
         {
             if (chanIt->second.isClientInChannel(clientPtr))
+            {
+                chanIt->second.broadcastMessage(quitMsg, clientPtr, outBuffers, fds);
                 chanIt->second.removeClient(clientPtr);
+            }
             
             if (chanIt->second.getClientCount() == 0)
             {
@@ -229,5 +269,6 @@ void Server::disconnectClient(int sockFd)
     }
     close(sockFd);
     clientBuff.erase(sockFd);
+    outBuffers.erase(sockFd);
     clients.erase(sockFd);
 }

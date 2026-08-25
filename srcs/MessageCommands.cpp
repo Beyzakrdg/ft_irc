@@ -1,7 +1,5 @@
 #include "../includes/Server.hpp"
 
-// --- Messaging and connection commands ---
-
 void Server::cmdPrivmsg(int sockFd, Client &client, std::vector<std::string> args)
 {
     if (!client.getsuccesLogin())
@@ -24,7 +22,7 @@ void Server::cmdPrivmsg(int sockFd, Client &client, std::vector<std::string> arg
             if (chan.isClientInChannel(&client))
             {
                 std::string privMsg = ":" + client.getdisplayNick() + " PRIVMSG " + target + " :" + message + "\r\n";
-                chan.broadcastMessage(privMsg, &client);
+                chan.broadcastMessage(privMsg, &client, outBuffers, fds);
             }
             else
             {
@@ -79,7 +77,7 @@ void Server::cmdQuit(int sockFd, Client &client, std::vector<std::string> args)
     while (chanIt != channels.end())
     {
         if (chanIt->second.isClientInChannel(&client))
-            chanIt->second.broadcastMessage(quitMsg, &client);
+            chanIt->second.broadcastMessage(quitMsg, &client, outBuffers, fds);
         ++chanIt;
     }
 

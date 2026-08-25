@@ -21,6 +21,7 @@ private:
   std::string psswd;
   std::vector<struct pollfd> fds;
   std::map<int, std::string> clientBuff;
+  std::map<int, std::string> outBuffers;
   std::map<int, Client> clients;
   std::map<std::string, Channel> channels;
 
@@ -41,6 +42,8 @@ private:
   void cmdPart(int sockFd, Client &client, std::vector<std::string> args);
 
   void disconnectClient(int sockFd);
+  void flushOutBuffer(int sockFd);
+  void updatePollEvents(int fd, short events);
 
   Client* getClientByNick(std::string nick);
   Channel* getChannelByName(std::string name);

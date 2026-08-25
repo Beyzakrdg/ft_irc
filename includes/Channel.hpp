@@ -3,6 +3,8 @@
 
 #include <string>
 #include <vector>
+#include <map>
+#include <poll.h>
 #include "Client.hpp"
 
 class Channel {
@@ -53,7 +55,7 @@ public:
     bool isClientInChannel(Client* client) const;
     bool isOperator(Client* client) const;
 
-    void broadcastMessage(std::string message, Client* excludeClient);
+    void broadcastMessage(std::string message, Client* excludeClient, std::map<int, std::string>& outBuffers, std::vector<struct pollfd>& fds);
 };
 
 #endif

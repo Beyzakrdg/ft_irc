@@ -82,12 +82,23 @@ bool Channel::isOperator(Client* client) const
     return false;
 }
 
-void Channel::broadcastMessage(std::string message, Client* excludeClient)
+void Channel::broadcastMessage(std::string message, Client* excludeClient, std::map<int, std::string>& outBuffers, std::vector<struct pollfd>& fds)
 {
     for (size_t i = 0; i < clients.size(); i++)
     {
         if (clients[i] != excludeClient)
-            send(clients[i]->getFd(), message.c_str(), message.length(), 0);
+        {
+            int fd = clients[i]->getFd();
+            outBuffers[fd] += message;
+            for (size_t j = 0; j < fds.size(); j++)
+            {
+                if (fds[j].fd == fd)
+                {
+                    fds[j].events = POLLIN | POLLOUT;
+                    break;
+                }
+            }
+        }
     }
 }
 
