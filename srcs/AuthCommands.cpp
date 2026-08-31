@@ -34,6 +34,8 @@ void Server::executeCommand(int sockFd, std::string cmd, std::vector<std::string
         cmdInvite(sockFd, client, args);
     else if (cmd == "PRIVMSG")
         cmdPrivmsg(sockFd, client, args);
+    else if (cmd == "NOTICE")
+        cmdNotice(sockFd, client, args);
     else if (cmd == "PING")
         cmdPing(sockFd, client, args);
     else if (cmd == "QUIT")
