@@ -110,7 +110,7 @@ void Server::cmdPong(int sockFd, Client &client, std::vector<std::string> args)
     
     client.setLastPong(time(NULL));
     client.setLastPingSent(0);
-    std::cout << "[PONG] Alindi <- " << client.getdisplayNick() << std::endl;
+    std::cout << "[PONG] <- " << client.getPrefix() << std::endl;
 }
 
 void Server::cmdQuit(int sockFd, Client &client, std::vector<std::string> args)

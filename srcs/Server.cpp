@@ -140,18 +140,23 @@ void Server::checkPingTimeouts()
 
         if (lastPingSent != 0 && (now - lastPingSent) >= PING_TIMEOUT)
         {
-            std::cout << "[PING] Timeout: " << client.getdisplayNick()
-                      << " (" << (now - lastPingSent) << "s beklendi)" << std::endl;
+            std::cout << "[PING] Timeout: " << client.getPrefix()
+                      << " (" << (now - lastPingSent) << "s)" << std::endl;
             toDisconnect.push_back(it->first);
             continue;
         }
 
         if (lastPingSent == 0 && (now - lastPong) >= PING_INTERVAL)
         {
-            std::string pingMsg = ":server PING :server\r\n";
+            // RFC uyumlu: token olarak unix timestamp kullan
+            char token[32];
+            snprintf(token, sizeof(token), "%ld", (long)now);
+            std::string pingMsg = "PING :";
+            pingMsg += token;
+            pingMsg += "\r\n";
             sendMessage(it->first, pingMsg);
             client.setLastPingSent(now);
-            std::cout << "[PING] Gonderildi -> " << client.getdisplayNick() << std::endl;
+            std::cout << "[PING] -> " << client.getPrefix() << std::endl;
         }
     }
 
