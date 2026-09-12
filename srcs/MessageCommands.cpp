@@ -107,10 +107,10 @@ void Server::cmdPong(int sockFd, Client &client, std::vector<std::string> args)
 {
     (void)sockFd;
     (void)args;
-    // Sunucunun gonderdigi PING'e karsilik PONG geldi:
-    // lastPong'u guncelle, lastPingSent'i sifirla (bir sonraki donguye kadar bekleme yok)
+    // Sunucunun gonderdigi PING'e karsilik PONG geldi
     client.setLastPong(time(NULL));
     client.setLastPingSent(0);
+    std::cout << "[PONG] Alindi <- " << client.getdisplayNick() << std::endl;
 }
 
 void Server::cmdQuit(int sockFd, Client &client, std::vector<std::string> args)

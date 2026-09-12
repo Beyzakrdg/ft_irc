@@ -140,20 +140,23 @@ void Server::checkPingTimeouts()
         time_t lastPong     = client.getLastPong();
         time_t lastPingSent = client.getLastPingSent();
 
-        // PING_TIMEOUT suresi doldu ve biz PONG bekliyorduk -> baglantıyı kes
+        // PING_TIMEOUT suresi doldu ve PONG bekliyorduk -> baglantiyi kes
         if (lastPingSent != 0 && (now - lastPingSent) >= PING_TIMEOUT)
         {
+            std::cout << "[PING] Timeout: " << client.getdisplayNick()
+                      << " (" << (now - lastPingSent) << "s beklendi)" << std::endl;
             toDisconnect.push_back(it->first);
             continue;
         }
 
-        // Henuz PING gondermemissek ya da bir onceki PONG geldikten beri
-        // PING_INTERVAL gecti -> yeni PING gonder
+        // PING_INTERVAL gecti ve hala PING beklemiyorsak -> yeni PING gonder
         if (lastPingSent == 0 && (now - lastPong) >= PING_INTERVAL)
         {
-            std::string pingMsg = "PING :server\r\n";
+            // irssi uyumlu format: :server PING :server
+            std::string pingMsg = ":server PING :server\r\n";
             sendMessage(it->first, pingMsg);
             client.setLastPingSent(now);
+            std::cout << "[PING] Gonderildi -> " << client.getdisplayNick() << std::endl;
         }
     }
 
@@ -163,7 +166,6 @@ void Server::checkPingTimeouts()
         std::map<int, Client>::iterator it = clients.find(toDisconnect[i]);
         if (it != clients.end())
         {
-            // Tum kanallara QUIT bildir
             std::string quitMsg = ":" + it->second.getPrefix() + " QUIT :Ping timeout\r\n";
             for (std::map<std::string, Channel>::iterator chanIt = channels.begin();
                  chanIt != channels.end(); ++chanIt)
@@ -173,7 +175,6 @@ void Server::checkPingTimeouts()
             }
         }
         disconnectClient(toDisconnect[i]);
-        // disconnectClient fd'yi fds listesinden siler, biz burada sadece clients'i temizledik
         for (size_t j = 0; j < fds.size(); ++j)
         {
             if (fds[j].fd == toDisconnect[i])
