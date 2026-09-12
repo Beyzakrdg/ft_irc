@@ -113,7 +113,6 @@ void Server::run()
             }
         }
 
-        // Her saniye ping/timeout kontrolu yap
         time_t now = time(NULL);
         if (now - lastPingCheck >= 1)
         {
@@ -133,14 +132,12 @@ void Server::checkPingTimeouts()
     {
         Client &client = it->second;
 
-        // Henuz login olmamis clientlari atla
         if (!client.getsuccesLogin())
             continue;
 
         time_t lastPong     = client.getLastPong();
         time_t lastPingSent = client.getLastPingSent();
 
-        // PING_TIMEOUT suresi doldu ve PONG bekliyorduk -> baglantiyi kes
         if (lastPingSent != 0 && (now - lastPingSent) >= PING_TIMEOUT)
         {
             std::cout << "[PING] Timeout: " << client.getdisplayNick()
@@ -149,10 +146,8 @@ void Server::checkPingTimeouts()
             continue;
         }
 
-        // PING_INTERVAL gecti ve hala PING beklemiyorsak -> yeni PING gonder
         if (lastPingSent == 0 && (now - lastPong) >= PING_INTERVAL)
         {
-            // irssi uyumlu format: :server PING :server
             std::string pingMsg = ":server PING :server\r\n";
             sendMessage(it->first, pingMsg);
             client.setLastPingSent(now);
@@ -160,7 +155,6 @@ void Server::checkPingTimeouts()
         }
     }
 
-    // Zaman asimina ugrayan clientlari baglantidan at
     for (size_t i = 0; i < toDisconnect.size(); ++i)
     {
         std::map<int, Client>::iterator it = clients.find(toDisconnect[i]);
@@ -267,7 +261,6 @@ void Server::acceptConnection()
 
     clients.insert(std::make_pair(sockFd, Client(sockFd)));
 
-    // Store client's IP address as hostname
     char hostBuf[INET_ADDRSTRLEN];
     if (inet_ntop(AF_INET, &clientAddr.sin_addr, hostBuf, sizeof(hostBuf)) != NULL)
         clients.at(sockFd).setHostname(std::string(hostBuf));

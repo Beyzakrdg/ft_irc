@@ -18,7 +18,7 @@ private:
     bool inviteOnly;
     bool topicRestricted;
     std::string key;
-    int userLimit; // -1 means no limit
+    int userLimit; 
 
 public:
     Channel();

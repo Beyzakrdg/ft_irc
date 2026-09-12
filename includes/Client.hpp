@@ -14,8 +14,8 @@ private:
   bool hasPassword;
   bool successLogin;
   std::string buffer;
-  time_t lastPong;      // sunucunun son PING'ine karsilık PONG alınan zaman
-  time_t lastPingSent;  // sunucunun son PING gönderdiği zaman (0 = beklenmıyor)
+  time_t lastPong;   
+  time_t lastPingSent; 
 
 public:
   Client(int clientFd);

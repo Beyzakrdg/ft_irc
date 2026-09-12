@@ -27,8 +27,6 @@ All messages sent by the server use the standard IRC prefix format `nick!user@ho
 | `INVITE`  | Invite a user to a channel (operator only)          |
 | `TOPIC`   | View or change a channel's topic                    |
 | `MODE`    | Set channel modes (see below)                       |
-| `PING`    | Client-initiated connection check; server replies with `PONG` |
-| `PONG`    | Response to server-initiated keepalive `PING`       |
 | `QUIT`    | Disconnect from the server                          |
 
 ### Channel Modes (via `MODE`)

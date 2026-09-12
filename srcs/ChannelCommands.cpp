@@ -1,8 +1,4 @@
 #include "../includes/Server.hpp"
-#include <cstdlib>
-#include <cstdio>
-
-// --- Channel commands ---
 
 void Server::cmdJoin(int sockFd, Client &client, std::vector<std::string> args)
 {
@@ -15,13 +11,11 @@ void Server::cmdJoin(int sockFd, Client &client, std::vector<std::string> args)
         return;
     }
 
-    // Parse comma-separated channel names and keys
     std::string channelList = args[0];
     std::string keyList = (args.size() > 1) ? args[1] : "";
     std::vector<std::string> channelNames;
     std::vector<std::string> keys;
 
-    // Split channels by comma
     size_t pos = 0;
     while ((pos = channelList.find(',')) != std::string::npos)
     {
@@ -30,7 +24,6 @@ void Server::cmdJoin(int sockFd, Client &client, std::vector<std::string> args)
     }
     channelNames.push_back(channelList);
 
-    // Split keys by comma
     if (!keyList.empty())
     {
         pos = 0;

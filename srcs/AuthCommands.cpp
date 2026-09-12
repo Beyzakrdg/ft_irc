@@ -1,7 +1,5 @@
 #include "../includes/Server.hpp"
-#include <cctype>
 
-// Converts cmd to uppercase and dispatches to the appropriate handler.
 void Server::executeCommand(int sockFd, std::string cmd, std::vector<std::string> args)
 {
     for (size_t i = 0; i < cmd.length(); i++)
@@ -75,7 +73,6 @@ Channel* Server::getChannelByName(std::string name)
     return NULL;
 }
 
-// --- Authentication commands ---
 
 void Server::cmdPass(int sockFd, Client &client, std::vector<std::string> args)
 {
@@ -115,7 +112,6 @@ void Server::cmdNick(int sockFd, Client &client, std::vector<std::string> args)
 
     std::string newNick = args[0];
 
-    // Nickname validation: must start with a letter or special char, not digit or '-'
     if (newNick.empty() || newNick.length() > 9)
     {
         std::string nick = client.getdisplayNick().empty() ? "*" : client.getdisplayNick();
@@ -123,7 +119,7 @@ void Server::cmdNick(int sockFd, Client &client, std::vector<std::string> args)
         sendMessage(sockFd, msg);
         return;
     }
-    // First char must be letter or special: [\]^_`{|}
+
     char first = newNick[0];
     if (!std::isalpha(first) && first != '[' && first != '\\' && first != ']'
         && first != '^' && first != '_' && first != '`'
@@ -134,7 +130,6 @@ void Server::cmdNick(int sockFd, Client &client, std::vector<std::string> args)
         sendMessage(sockFd, msg);
         return;
     }
-    // Remaining chars: letter, digit, special, or -
     for (size_t i = 1; i < newNick.length(); i++)
     {
         char c = newNick[i];
@@ -162,7 +157,6 @@ void Server::cmdNick(int sockFd, Client &client, std::vector<std::string> args)
 
     if (!oldNick.empty() && client.getsuccesLogin())
     {
-        // NICK mesajı için eski prefix'i elle oluşturuyoruz (nick değişmeden önceki hali)
         std::string oldPrefix = oldNick + "!" + (client.getuserName().empty() ? "unknown" : client.getuserName()) + "@" + client.getHostname();
         std::string nickMsg = ":" + oldPrefix + " NICK :" + newNick + "\r\n";
         sendMessage(sockFd, nickMsg);

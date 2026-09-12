@@ -13,12 +13,14 @@
 #include <vector>
 #include <iostream>
 #include <ctime>
+#include <cctype>
+#include <cstdlib>
+#include <cstdio>
+#include <iostream>
 #include "Client.hpp"
 #include "Channel.hpp"
 
-// Sunucu kac saniyede bir PING atar
 #define PING_INTERVAL 90
-// PONG gelmezse kac saniye sonra baglanti kesilir
 #define PING_TIMEOUT  120
 
 class Server {
