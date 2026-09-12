@@ -22,9 +22,10 @@ void Server::cmdPrivmsg(int sockFd, Client &client, std::vector<std::string> arg
 
     if (target[0] == '#')
     {
-        if (channels.find(target) != channels.end())
+        std::map<std::string, Channel>::iterator chanIt = channels.find(target);
+        if (chanIt != channels.end())
         {
-            Channel &chan = channels.at(target);
+            Channel &chan = chanIt->second;
             if (chan.isClientInChannel(&client))
             {
                 std::string privMsg = ":" + client.getPrefix() + " PRIVMSG " + target + " :" + message + "\r\n";
@@ -69,9 +70,10 @@ void Server::cmdNotice(int sockFd, Client &client, std::vector<std::string> args
 
     if (target[0] == '#')
     {
-        if (channels.find(target) != channels.end())
+        std::map<std::string, Channel>::iterator chanIt = channels.find(target);
+        if (chanIt != channels.end())
         {
-            Channel &chan = channels.at(target);
+            Channel &chan = chanIt->second;
             if (chan.isClientInChannel(&client))
             {
                 std::string noticeMsg = ":" + client.getPrefix() + " NOTICE " + target + " :" + message + "\r\n";

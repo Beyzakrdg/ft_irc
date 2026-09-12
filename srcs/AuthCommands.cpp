@@ -1,4 +1,12 @@
 #include "../includes/Server.hpp"
+#include <cctype>
+
+static std::string getNickOrStar(const Client &client)
+{
+    if (client.getdisplayNick().empty())
+        return "*";
+    return client.getdisplayNick();
+}
 
 void Server::executeCommand(int sockFd, std::string cmd, std::vector<std::string> args)
 {
@@ -6,8 +14,6 @@ void Server::executeCommand(int sockFd, std::string cmd, std::vector<std::string
     {
         cmd[i] = std::toupper(cmd[i]);
     }
-
-
 
     std::map<int, Client>::iterator it = clients.find(sockFd);
     if (it == clients.end())
@@ -68,11 +74,11 @@ Client* Server::getClientByNick(std::string nick)
 
 Channel* Server::getChannelByName(std::string name)
 {
-    if (channels.find(name) != channels.end())
-        return &channels.at(name);
+    std::map<std::string, Channel>::iterator it = channels.find(name);
+    if (it != channels.end())
+        return &(it->second);
     return NULL;
 }
-
 
 void Server::cmdPass(int sockFd, Client &client, std::vector<std::string> args)
 {
@@ -89,10 +95,9 @@ void Server::cmdPass(int sockFd, Client &client, std::vector<std::string> args)
         return;
     }
     if (args[0] == psswd)
-    {
         client.setHasPassword(true);
-
-    } else {
+    else
+    {
         std::string msg = ":server 464 * :Password incorrect\r\n";
         sendMessage(sockFd, msg);
     }
@@ -104,8 +109,7 @@ void Server::cmdNick(int sockFd, Client &client, std::vector<std::string> args)
         return;
     if (args.empty())
     {
-        std::string nick = client.getdisplayNick().empty() ? "*" : client.getdisplayNick();
-        std::string msg = ":server 431 " + nick + " :No nickname given\r\n";
+        std::string msg = ":server 431 " + getNickOrStar(client) + " :No nickname given\r\n";
         sendMessage(sockFd, msg);
         return;
     }
@@ -114,8 +118,7 @@ void Server::cmdNick(int sockFd, Client &client, std::vector<std::string> args)
 
     if (newNick.empty() || newNick.length() > 9)
     {
-        std::string nick = client.getdisplayNick().empty() ? "*" : client.getdisplayNick();
-        std::string msg = ":server 432 " + nick + " " + newNick + " :Erroneous nickname\r\n";
+        std::string msg = ":server 432 " + getNickOrStar(client) + " " + newNick + " :Erroneous nickname\r\n";
         sendMessage(sockFd, msg);
         return;
     }
@@ -125,8 +128,7 @@ void Server::cmdNick(int sockFd, Client &client, std::vector<std::string> args)
         && first != '^' && first != '_' && first != '`'
         && first != '{' && first != '|' && first != '}')
     {
-        std::string nick = client.getdisplayNick().empty() ? "*" : client.getdisplayNick();
-        std::string msg = ":server 432 " + nick + " " + newNick + " :Erroneous nickname\r\n";
+        std::string msg = ":server 432 " + getNickOrStar(client) + " " + newNick + " :Erroneous nickname\r\n";
         sendMessage(sockFd, msg);
         return;
     }
@@ -137,8 +139,7 @@ void Server::cmdNick(int sockFd, Client &client, std::vector<std::string> args)
             && c != '^' && c != '_' && c != '`'
             && c != '{' && c != '|' && c != '}')
         {
-            std::string nick = client.getdisplayNick().empty() ? "*" : client.getdisplayNick();
-            std::string msg = ":server 432 " + nick + " " + newNick + " :Erroneous nickname\r\n";
+            std::string msg = ":server 432 " + getNickOrStar(client) + " " + newNick + " :Erroneous nickname\r\n";
             sendMessage(sockFd, msg);
             return;
         }
@@ -146,8 +147,7 @@ void Server::cmdNick(int sockFd, Client &client, std::vector<std::string> args)
 
     if (getClientByNick(newNick) != NULL && getClientByNick(newNick)->getFd() != sockFd)
     {
-        std::string nick = client.getdisplayNick().empty() ? "*" : client.getdisplayNick();
-        std::string msg = ":server 433 " + nick + " " + newNick + " :Nickname is already in use\r\n";
+        std::string msg = ":server 433 " + getNickOrStar(client) + " " + newNick + " :Nickname is already in use\r\n";
         sendMessage(sockFd, msg);
         return;
     }
@@ -157,7 +157,12 @@ void Server::cmdNick(int sockFd, Client &client, std::vector<std::string> args)
 
     if (!oldNick.empty() && client.getsuccesLogin())
     {
-        std::string oldPrefix = oldNick + "!" + (client.getuserName().empty() ? "unknown" : client.getuserName()) + "@" + client.getHostname();
+        std::string userName;
+        if (client.getuserName().empty())
+            userName = "unknown";
+        else
+            userName = client.getuserName();
+        std::string oldPrefix = oldNick + "!" + userName + "@" + client.getHostname();
         std::string nickMsg = ":" + oldPrefix + " NICK :" + newNick + "\r\n";
         sendMessage(sockFd, nickMsg);
 
@@ -187,7 +192,6 @@ void Server::cmdNick(int sockFd, Client &client, std::vector<std::string> args)
         client.setsuccessLogin(true);
         std::string welcome = ":server 001 " + client.getdisplayNick() + " :Welcome to the ft_irc network " + client.getdisplayNick() + "\r\n";
         sendMessage(sockFd, welcome);
-
     }
 }
 
@@ -203,8 +207,7 @@ void Server::cmdUser(int sockFd, Client &client, std::vector<std::string> args)
     }
     if (args.size() < 4)
     {
-        std::string nick = client.getdisplayNick().empty() ? "*" : client.getdisplayNick();
-        std::string msg = ":server 461 " + nick + " USER :Not enough parameters\r\n";
+        std::string msg = ":server 461 " + getNickOrStar(client) + " USER :Not enough parameters\r\n";
         sendMessage(sockFd, msg);
         return;
     }
@@ -215,6 +218,5 @@ void Server::cmdUser(int sockFd, Client &client, std::vector<std::string> args)
         client.setsuccessLogin(true);
         std::string welcome = ":server 001 " + client.getdisplayNick() + " :Welcome to the ft_irc network " + client.getdisplayNick() + "\r\n";
         sendMessage(sockFd, welcome);
-
     }
 }

@@ -1,4 +1,40 @@
 #include "../includes/Server.hpp"
+#include <cstdlib>
+#include <cstdio>
+
+Channel* Server::getValidChannel(int sockFd, Client &client, const std::string &name)
+{
+    std::map<std::string, Channel>::iterator it = channels.find(name);
+    if (it == channels.end())
+    {
+        std::string msg = ":server 403 " + client.getdisplayNick() + " " + name + " :No such channel\r\n";
+        sendMessage(sockFd, msg);
+        return NULL;
+    }
+    return &(it->second);
+}
+
+bool Server::checkInChannel(int sockFd, Client &client, Channel &chan, const std::string &name)
+{
+    if (!chan.isClientInChannel(&client))
+    {
+        std::string msg = ":server 442 " + client.getdisplayNick() + " " + name + " :You're not on that channel\r\n";
+        sendMessage(sockFd, msg);
+        return false;
+    }
+    return true;
+}
+
+bool Server::checkIsOperator(int sockFd, Client &client, Channel &chan, const std::string &name)
+{
+    if (!chan.isOperator(&client))
+    {
+        std::string msg = ":server 482 " + client.getdisplayNick() + " " + name + " :You're not channel operator\r\n";
+        sendMessage(sockFd, msg);
+        return false;
+    }
+    return true;
+}
 
 void Server::cmdJoin(int sockFd, Client &client, std::vector<std::string> args)
 {
@@ -12,7 +48,9 @@ void Server::cmdJoin(int sockFd, Client &client, std::vector<std::string> args)
     }
 
     std::string channelList = args[0];
-    std::string keyList = (args.size() > 1) ? args[1] : "";
+    std::string keyList;
+    if (args.size() > 1)
+        keyList = args[1];
     std::vector<std::string> channelNames;
     std::vector<std::string> keys;
 
@@ -38,7 +76,9 @@ void Server::cmdJoin(int sockFd, Client &client, std::vector<std::string> args)
     for (size_t ci = 0; ci < channelNames.size(); ++ci)
     {
         std::string channelName = channelNames[ci];
-        std::string providedKey = (ci < keys.size()) ? keys[ci] : "";
+        std::string providedKey;
+        if (ci < keys.size())
+            providedKey = keys[ci];
 
         if (channelName.empty() || channelName[0] != '#')
         {
@@ -46,13 +86,17 @@ void Server::cmdJoin(int sockFd, Client &client, std::vector<std::string> args)
             sendMessage(sockFd, msg);
             continue;
         }
-        if (channels.find(channelName) == channels.end())
+
+        std::map<std::string, Channel>::iterator chanIt = channels.find(channelName);
+        if (chanIt == channels.end())
         {
-            channels.insert(std::make_pair(channelName, Channel(channelName)));
-            channels.at(channelName).addOperator(&client);
+            std::pair<std::map<std::string, Channel>::iterator, bool> ret =
+                channels.insert(std::make_pair(channelName, Channel(channelName)));
+            chanIt = ret.first;
+            chanIt->second.addOperator(&client);
         }
 
-        Channel &chan = channels.at(channelName);
+        Channel &chan = chanIt->second;
 
         if (chan.isClientInChannel(&client))
             continue;
@@ -102,7 +146,6 @@ void Server::cmdJoin(int sockFd, Client &client, std::vector<std::string> args)
 
         std::string namesMsg = ":server 353 " + client.getdisplayNick() + " = " + channelName + " :" + namesList + "\r\n";
         sendMessage(sockFd, namesMsg);
-
         std::string endNamesMsg = ":server 366 " + client.getdisplayNick() + " " + channelName + " :End of /NAMES list\r\n";
         sendMessage(sockFd, endNamesMsg);
     }
@@ -112,7 +155,6 @@ void Server::cmdPart(int sockFd, Client &client, std::vector<std::string> args)
 {
     if (!client.getsuccesLogin())
         return;
-
     if (args.empty())
     {
         std::string msg = ":server 461 " + client.getdisplayNick() + " PART :Not enough parameters\r\n";
@@ -121,33 +163,24 @@ void Server::cmdPart(int sockFd, Client &client, std::vector<std::string> args)
     }
 
     std::string channelName = args[0];
-    std::string reason = (args.size() > 1) ? args[1] : "";
+    std::string reason;
+    if (args.size() > 1)
+        reason = args[1];
 
-    if (channels.find(channelName) == channels.end())
-    {
-        std::string msg = ":server 403 " + client.getdisplayNick() + " " + channelName + " :No such channel\r\n";
-        sendMessage(sockFd, msg);
+    Channel *chan = getValidChannel(sockFd, client, channelName);
+    if (!chan)
         return;
-    }
-
-    Channel &chan = channels.at(channelName);
-    if (!chan.isClientInChannel(&client))
-    {
-        std::string msg = ":server 442 " + client.getdisplayNick() + " " + channelName + " :You're not on that channel\r\n";
-        sendMessage(sockFd, msg);
+    if (!checkInChannel(sockFd, client, *chan, channelName))
         return;
-    }
 
     std::string partMsg = ":" + client.getPrefix() + " PART " + channelName;
     if (!reason.empty())
-    {
         partMsg += " :" + reason;
-    }
     partMsg += "\r\n";
 
-    chan.broadcastMessage(partMsg, NULL, outBuffers, fds);
-    chan.removeClient(&client);
-    if (chan.getClientCount() == 0)
+    chan->broadcastMessage(partMsg, NULL, outBuffers, fds);
+    chan->removeClient(&client);
+    if (chan->getClientCount() == 0)
         channels.erase(channelName);
 }
 
@@ -164,25 +197,15 @@ void Server::cmdTopic(int sockFd, Client &client, std::vector<std::string> args)
 
     std::string channelName = args[0];
 
-    if (channels.find(channelName) == channels.end())
-    {
-        std::string msg = ":server 403 " + client.getdisplayNick() + " " + channelName + " :No such channel\r\n";
-        sendMessage(sockFd, msg);
+    Channel *chan = getValidChannel(sockFd, client, channelName);
+    if (!chan)
         return;
-    }
-
-    Channel &chan = channels.at(channelName);
-
-    if (!chan.isClientInChannel(&client))
-    {
-        std::string msg = ":server 442 " + client.getdisplayNick() + " " + channelName + " :You're not on that channel\r\n";
-        sendMessage(sockFd, msg);
+    if (!checkInChannel(sockFd, client, *chan, channelName))
         return;
-    }
 
     if (args.size() == 1)
     {
-        std::string currentTopic = chan.getTopic();
+        std::string currentTopic = chan->getTopic();
         if (currentTopic.empty())
         {
             std::string msg = ":server 331 " + client.getdisplayNick() + " " + channelName + " :No topic is set\r\n";
@@ -196,18 +219,12 @@ void Server::cmdTopic(int sockFd, Client &client, std::vector<std::string> args)
     }
     else
     {
-        if (chan.isTopicRestricted() && !chan.isOperator(&client))
-        {
-             std::string msg = ":server 482 " + client.getdisplayNick() + " " + channelName + " :You're not channel operator\r\n";
-             sendMessage(sockFd, msg);
-             return;
-        }
-
+        if (chan->isTopicRestricted() && !checkIsOperator(sockFd, client, *chan, channelName))
+            return;
         std::string newTopic = args[1];
-        chan.setTopic(newTopic);
-
+        chan->setTopic(newTopic);
         std::string topicMsg = ":" + client.getPrefix() + " TOPIC " + channelName + " :" + newTopic + "\r\n";
-        chan.broadcastMessage(topicMsg, NULL, outBuffers, fds);
+        chan->broadcastMessage(topicMsg, NULL, outBuffers, fds);
     }
 }
 
@@ -221,52 +238,41 @@ void Server::cmdKick(int sockFd, Client &client, std::vector<std::string> args)
         sendMessage(sockFd, msg);
         return;
     }
+
     std::string channelName = args[0];
-    std::string targetNick = args[1];
-    std::string reason = (args.size() > 2) ? args[2] : "No reason given";
+    std::string targetNick  = args[1];
+    std::string reason;
+    if (args.size() > 2)
+        reason = args[2];
+    else
+        reason = "No reason given";
 
-    if (channels.find(channelName) == channels.end())
-    {
-        std::string msg = ":server 403 " + client.getdisplayNick() + " " + channelName + " :No such channel\r\n";
-        sendMessage(sockFd, msg);
+    Channel *chan = getValidChannel(sockFd, client, channelName);
+    if (!chan)
         return;
-    }
-
-    Channel &chan = channels.at(channelName);
-
-    if (!chan.isClientInChannel(&client))
-    {
-        std::string msg = ":server 442 " + client.getdisplayNick() + " " + channelName + " :You're not on that channel\r\n";
-        sendMessage(sockFd, msg);
+    if (!checkInChannel(sockFd, client, *chan, channelName))
         return;
-    }
+    if (!checkIsOperator(sockFd, client, *chan, channelName))
+        return;
 
-    if (!chan.isOperator(&client))
-    {
-         std::string msg = ":server 482 " + client.getdisplayNick() + " " + channelName + " :You're not channel operator\r\n";
-         sendMessage(sockFd, msg);
-         return;
-    }
-    Client* targetClient = getClientByNick(targetNick);
-
+    Client *targetClient = getClientByNick(targetNick);
     if (!targetClient)
     {
         std::string msg = ":server 401 " + client.getdisplayNick() + " " + targetNick + " :No such nick/channel\r\n";
         sendMessage(sockFd, msg);
         return;
     }
-
-    if (!chan.isClientInChannel(targetClient))
+    if (!chan->isClientInChannel(targetClient))
     {
         std::string msg = ":server 441 " + client.getdisplayNick() + " " + targetNick + " " + channelName + " :They aren't on that channel\r\n";
         sendMessage(sockFd, msg);
         return;
     }
-    std::string kickMsg = ":" + client.getPrefix() + " KICK " + channelName + " " + targetNick + " :" + reason + "\r\n";
-    chan.broadcastMessage(kickMsg, NULL, outBuffers, fds);
 
-    chan.removeClient(targetClient);
-    if (chan.getClientCount() == 0)
+    std::string kickMsg = ":" + client.getPrefix() + " KICK " + channelName + " " + targetNick + " :" + reason + "\r\n";
+    chan->broadcastMessage(kickMsg, NULL, outBuffers, fds);
+    chan->removeClient(targetClient);
+    if (chan->getClientCount() == 0)
         channels.erase(channelName);
 }
 
@@ -281,33 +287,90 @@ void Server::cmdInvite(int sockFd, Client &client, std::vector<std::string> args
         return;
     }
 
-    std::string targetNick = args[0];
+    std::string targetNick  = args[0];
     std::string channelName = args[1];
 
-    if (channels.find(channelName) == channels.end())
+    Channel *chan = getValidChannel(sockFd, client, channelName);
+    if (!chan)
+        return;
+    if (!checkInChannel(sockFd, client, *chan, channelName))
+        return;
+    if (chan->isInviteOnly() && !checkIsOperator(sockFd, client, *chan, channelName))
+        return;
+
+    Client *targetClient = getClientByNick(targetNick);
+    if (!targetClient)
     {
-        std::string msg = ":server 403 " + client.getdisplayNick() + " " + channelName + " :No such channel\r\n";
+        std::string msg = ":server 401 " + client.getdisplayNick() + " " + targetNick + " :No such nick/channel\r\n";
+        sendMessage(sockFd, msg);
+        return;
+    }
+    if (chan->isClientInChannel(targetClient))
+    {
+        std::string msg = ":server 443 " + client.getdisplayNick() + " " + targetNick + " " + channelName + " :is already on channel\r\n";
         sendMessage(sockFd, msg);
         return;
     }
 
-    Channel &chan = channels.at(channelName);
+    chan->addInvite(targetNick);
+    std::string replyMsg = ":server 341 " + client.getdisplayNick() + " " + targetNick + " " + channelName + "\r\n";
+    sendMessage(sockFd, replyMsg);
+    std::string inviteMsg = ":" + client.getPrefix() + " INVITE " + targetNick + " :" + channelName + "\r\n";
+    sendMessage(targetClient->getFd(), inviteMsg);
+}
 
-    if (!chan.isClientInChannel(&client))
+void Server::handleModeI(Client &client, Channel &chan, const std::string &target, bool adding)
+{
+    chan.setInviteOnly(adding);
+    std::string suffix;
+    if (adding)
+        suffix = " +i\r\n";
+    else
+        suffix = " -i\r\n";
+    std::string broadcast = ":" + client.getPrefix() + " MODE " + target + suffix;
+    chan.broadcastMessage(broadcast, NULL, outBuffers, fds);
+}
+
+void Server::handleModeT(Client &client, Channel &chan, const std::string &target, bool adding)
+{
+    chan.setTopicRestricted(adding);
+    std::string suffix;
+    if (adding)
+        suffix = " +t\r\n";
+    else
+        suffix = " -t\r\n";
+    std::string broadcast = ":" + client.getPrefix() + " MODE " + target + suffix;
+    chan.broadcastMessage(broadcast, NULL, outBuffers, fds);
+}
+
+void Server::handleModeK(Client &client, Channel &chan, const std::string &target, bool adding,
+                          std::vector<std::string> &args, size_t &argIndex)
+{
+    if (adding)
     {
-        std::string msg = ":server 442 " + client.getdisplayNick() + " " + channelName + " :You're not on that channel\r\n";
-        sendMessage(sockFd, msg);
-        return;
+        if (argIndex < args.size())
+        {
+            chan.setKey(args[argIndex++]);
+            std::string broadcast = ":" + client.getPrefix() + " MODE " + target + " +k " + chan.getKey() + "\r\n";
+            chan.broadcastMessage(broadcast, NULL, outBuffers, fds);
+        }
     }
-
-    if (chan.isInviteOnly() && !chan.isOperator(&client))
+    else
     {
-        std::string msg = ":server 482 " + client.getdisplayNick() + " " + channelName + " :You're not channel operator\r\n";
-        sendMessage(sockFd, msg);
-        return;
+        chan.setKey("");
+        std::string broadcast = ":" + client.getPrefix() + " MODE " + target + " -k\r\n";
+        chan.broadcastMessage(broadcast, NULL, outBuffers, fds);
     }
+}
 
-    Client* targetClient = getClientByNick(targetNick);
+void Server::handleModeO(int sockFd, Client &client, Channel &chan, const std::string &target, bool adding,
+                          std::vector<std::string> &args, size_t &argIndex)
+{
+    if (argIndex >= args.size())
+        return;
+
+    std::string targetNick   = args[argIndex++];
+    Client      *targetClient = getClientByNick(targetNick);
 
     if (!targetClient)
     {
@@ -315,18 +378,51 @@ void Server::cmdInvite(int sockFd, Client &client, std::vector<std::string> args
         sendMessage(sockFd, msg);
         return;
     }
-
-    if (chan.isClientInChannel(targetClient))
+    if (!chan.isClientInChannel(targetClient))
     {
-        std::string msg = ":server 443 " + client.getdisplayNick() + " " + targetNick + " " + channelName + " :is already on channel\r\n";
+        std::string msg = ":server 441 " + client.getdisplayNick() + " " + targetNick + " " + target + " :They aren't on that channel\r\n";
         sendMessage(sockFd, msg);
         return;
     }
-    chan.addInvite(targetNick);
-    std::string replyMsg = ":server 341 " + client.getdisplayNick() + " " + targetNick + " " + channelName + "\r\n";
-    sendMessage(sockFd, replyMsg);
-    std::string inviteMsg = ":" + client.getPrefix() + " INVITE " + targetNick + " :" + channelName + "\r\n";
-    sendMessage(targetClient->getFd(), inviteMsg);
+
+    if (adding)
+    {
+        chan.addOperator(targetClient);
+        std::string broadcast = ":" + client.getPrefix() + " MODE " + target + " +o " + targetNick + "\r\n";
+        chan.broadcastMessage(broadcast, NULL, outBuffers, fds);
+    }
+    else
+    {
+        chan.removeOperator(targetClient);
+        std::string broadcast = ":" + client.getPrefix() + " MODE " + target + " -o " + targetNick + "\r\n";
+        chan.broadcastMessage(broadcast, NULL, outBuffers, fds);
+    }
+}
+
+void Server::handleModeL(Client &client, Channel &chan, const std::string &target, bool adding,
+                          std::vector<std::string> &args, size_t &argIndex)
+{
+    if (adding)
+    {
+        if (argIndex < args.size())
+        {
+            int limit = std::atoi(args[argIndex++].c_str());
+            if (limit > 0)
+            {
+                chan.setUserLimit(limit);
+                char buf[32];
+                snprintf(buf, sizeof(buf), "%d", limit);
+                std::string broadcast = ":" + client.getPrefix() + " MODE " + target + " +l " + buf + "\r\n";
+                chan.broadcastMessage(broadcast, NULL, outBuffers, fds);
+            }
+        }
+    }
+    else
+    {
+        chan.setUserLimit(-1);
+        std::string broadcast = ":" + client.getPrefix() + " MODE " + target + " -l\r\n";
+        chan.broadcastMessage(broadcast, NULL, outBuffers, fds);
+    }
 }
 
 void Server::cmdMode(int sockFd, Client &client, std::vector<std::string> args)
@@ -344,34 +440,27 @@ void Server::cmdMode(int sockFd, Client &client, std::vector<std::string> args)
     if (target[0] != '#')
         return;
 
-    if (channels.find(target) == channels.end())
-    {
-        std::string msg = ":server 403 " + client.getdisplayNick() + " " + target + " :No such channel\r\n";
-        sendMessage(sockFd, msg);
+    Channel *chan = getValidChannel(sockFd, client, target);
+    if (!chan)
         return;
-    }
 
-    Channel &chan = channels.at(target);
     if (args.size() == 1)
     {
         std::string modes = "+";
-        if (chan.isInviteOnly()) modes += "i";
-        if (chan.isTopicRestricted()) modes += "t";
-        if (!chan.getKey().empty()) modes += "k";
-        if (chan.getUserLimit() != -1) modes += "l";
+        if (chan->isInviteOnly())    modes += "i";
+        if (chan->isTopicRestricted()) modes += "t";
+        if (!chan->getKey().empty()) modes += "k";
+        if (chan->getUserLimit() != -1) modes += "l";
         std::string msg = ":server 324 " + client.getdisplayNick() + " " + target + " " + modes + "\r\n";
         sendMessage(sockFd, msg);
         return;
     }
-    if (!chan.isOperator(&client))
-    {
-        std::string msg = ":server 482 " + client.getdisplayNick() + " " + target + " :You're not channel operator\r\n";
-        sendMessage(sockFd, msg);
+
+    if (!checkIsOperator(sockFd, client, *chan, target))
         return;
-    }
 
     std::string modeStr = args[1];
-    bool adding = true;
+    bool   adding   = true;
     size_t argIndex = 2;
 
     for (size_t i = 0; i < modeStr.length(); ++i)
@@ -382,92 +471,15 @@ void Server::cmdMode(int sockFd, Client &client, std::vector<std::string> args)
         else if (m == '-')
             adding = false;
         else if (m == 'i')
-        {
-            chan.setInviteOnly(adding);
-            std::string broadcast = ":" + client.getPrefix() + " MODE " + target + (adding ? " +i\r\n" : " -i\r\n");
-            chan.broadcastMessage(broadcast, NULL, outBuffers, fds);
-        }
+            handleModeI(client, *chan, target, adding);
         else if (m == 't')
-        {
-            chan.setTopicRestricted(adding);
-            std::string broadcast = ":" + client.getPrefix() + " MODE " + target + (adding ? " +t\r\n" : " -t\r\n");
-            chan.broadcastMessage(broadcast, NULL, outBuffers, fds);
-        }
+            handleModeT(client, *chan, target, adding);
         else if (m == 'k')
-        {
-            if (adding)
-            {
-                if (argIndex < args.size())
-                {
-                    chan.setKey(args[argIndex++]);
-                    std::string broadcast = ":" + client.getPrefix() + " MODE " + target + " +k " + chan.getKey() + "\r\n";
-                    chan.broadcastMessage(broadcast, NULL, outBuffers, fds);
-                }
-            }
-            else
-            {
-                chan.setKey("");
-                std::string broadcast = ":" + client.getPrefix() + " MODE " + target + " -k\r\n";
-                chan.broadcastMessage(broadcast, NULL, outBuffers, fds);
-            }
-        }
+            handleModeK(client, *chan, target, adding, args, argIndex);
         else if (m == 'o')
-        {
-            if (argIndex < args.size())
-            {
-                std::string targetNick = args[argIndex++];
-                Client* targetClient = getClientByNick(targetNick);
-                if (!targetClient)
-                {
-                    std::string msg = ":server 401 " + client.getdisplayNick() + " " + targetNick + " :No such nick/channel\r\n";
-                    sendMessage(sockFd, msg);
-                }
-                else if (!chan.isClientInChannel(targetClient))
-                {
-                    std::string msg = ":server 441 " + client.getdisplayNick() + " " + targetNick + " " + target + " :They aren't on that channel\r\n";
-                    sendMessage(sockFd, msg);
-                }
-                else
-                {
-                    if (adding)
-                    {
-                        chan.addOperator(targetClient);
-                        std::string broadcast = ":" + client.getPrefix() + " MODE " + target + " +o " + targetNick + "\r\n";
-                        chan.broadcastMessage(broadcast, NULL, outBuffers, fds);
-                    }
-                    else
-                    {
-                        chan.removeOperator(targetClient);
-                        std::string broadcast = ":" + client.getPrefix() + " MODE " + target + " -o " + targetNick + "\r\n";
-                        chan.broadcastMessage(broadcast, NULL, outBuffers, fds);
-                    }
-                }
-            }
-        }
+            handleModeO(sockFd, client, *chan, target, adding, args, argIndex);
         else if (m == 'l')
-        {
-            if (adding)
-            {
-                if (argIndex < args.size())
-                {
-                    int limit = std::atoi(args[argIndex++].c_str());
-                    if (limit > 0)
-                    {
-                        chan.setUserLimit(limit);
-                        char buf[32];
-                        snprintf(buf, sizeof(buf), "%d", limit);
-                        std::string broadcast = ":" + client.getPrefix() + " MODE " + target + " +l " + buf + "\r\n";
-                        chan.broadcastMessage(broadcast, NULL, outBuffers, fds);
-                    }
-                }
-            }
-            else
-            {
-                chan.setUserLimit(-1);
-                std::string broadcast = ":" + client.getPrefix() + " MODE " + target + " -l\r\n";
-                chan.broadcastMessage(broadcast, NULL, outBuffers, fds);
-            }
-        }
+            handleModeL(client, *chan, target, adding, args, argIndex);
         else
         {
             std::string msg = ":server 472 " + client.getdisplayNick() + " " + std::string(1, m) + " :is unknown mode char to me\r\n";

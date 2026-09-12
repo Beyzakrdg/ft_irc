@@ -58,9 +58,25 @@ private:
   void flushOutBuffer(int sockFd);
   void updatePollEvents(int fd, short events);
 
-  Client* getClientByNick(std::string nick);
+
+  Client*  getClientByNick(std::string nick);
   Channel* getChannelByName(std::string name);
-  void sendMessage(int fd, std::string msg);
+  void     sendMessage(int fd, std::string msg);
+
+
+  Channel* getValidChannel(int sockFd, Client &client, const std::string &name);
+  bool     checkInChannel(int sockFd, Client &client, Channel &chan, const std::string &name);
+  bool     checkIsOperator(int sockFd, Client &client, Channel &chan, const std::string &name);
+
+
+  void handleModeI(Client &client, Channel &chan, const std::string &target, bool adding);
+  void handleModeT(Client &client, Channel &chan, const std::string &target, bool adding);
+  void handleModeK(Client &client, Channel &chan, const std::string &target, bool adding,
+                   std::vector<std::string> &args, size_t &argIndex);
+  void handleModeO(int sockFd, Client &client, Channel &chan, const std::string &target, bool adding,
+                   std::vector<std::string> &args, size_t &argIndex);
+  void handleModeL(Client &client, Channel &chan, const std::string &target, bool adding,
+                   std::vector<std::string> &args, size_t &argIndex);
 
 public:
   Server(int port, std::string password);

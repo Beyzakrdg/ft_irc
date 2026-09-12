@@ -264,13 +264,13 @@ void Server::acceptConnection()
     clientPollFd.revents = 0;
     fds.push_back(clientPollFd);
 
-    clients.insert(std::make_pair(sockFd, Client(sockFd)));
+    std::map<int, Client>::iterator clientIt = clients.insert(std::make_pair(sockFd, Client(sockFd))).first;
 
     char hostBuf[INET_ADDRSTRLEN];
     if (inet_ntop(AF_INET, &clientAddr.sin_addr, hostBuf, sizeof(hostBuf)) != NULL)
-        clients.at(sockFd).setHostname(std::string(hostBuf));
+        clientIt->second.setHostname(std::string(hostBuf));
     else
-        clients.at(sockFd).setHostname("localhost");
+        clientIt->second.setHostname("localhost");
 }
 
 void Server::parseMessage(int sockFd, std::string line)

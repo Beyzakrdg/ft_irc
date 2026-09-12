@@ -35,8 +35,16 @@ std::string Client::getHostname() const
 }
 std::string Client::getPrefix() const
 {
-    std::string user = userName.empty() ? "unknown" : userName;
-    std::string host = hostname.empty() ? "localhost" : hostname;
+    std::string user;
+    if (userName.empty())
+        user = "unknown";
+    else
+        user = userName;
+    std::string host;
+    if (hostname.empty())
+        host = "localhost";
+    else
+        host = hostname;
     return displayNick + "!" + user + "@" + host;
 }
 void Client::setdisplayNick(std::string nick)
