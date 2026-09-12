@@ -79,7 +79,7 @@ irssi -c localhost -p 6667 -w mypassword -n yournick
 ### Connect with netcat (manual testing)
 
 ```bash
-nc -c localhost 6667
+nc -C localhost 6667
 PASS mypassword
 NICK mynick
 USER myuser 0 * :My Real Name

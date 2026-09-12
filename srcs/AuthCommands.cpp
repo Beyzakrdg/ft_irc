@@ -99,13 +99,19 @@ void Server::cmdPass(int sockFd, Client &client, std::vector<std::string> args)
     {
         std::string msg = ":server 464 * :Password incorrect\r\n";
         sendMessage(sockFd, msg);
+        return;
+    }
+
+    if (!client.getsuccesLogin() && client.isRegistered())
+    {
+        client.setsuccessLogin(true);
+        std::string welcome = ":server 001 " + client.getdisplayNick() + " :Welcome to the ft_irc network " + client.getdisplayNick() + "\r\n";
+        sendMessage(sockFd, welcome);
     }
 }
 
 void Server::cmdNick(int sockFd, Client &client, std::vector<std::string> args)
 {
-    if (!client.getHasPassword())
-        return;
     if (args.empty())
     {
         std::string msg = ":server 431 " + getNickOrStar(client) + " :No nickname given\r\n";
@@ -196,8 +202,6 @@ void Server::cmdNick(int sockFd, Client &client, std::vector<std::string> args)
 
 void Server::cmdUser(int sockFd, Client &client, std::vector<std::string> args)
 {
-    if (!client.getHasPassword())
-        return;
     if (client.getsuccesLogin())
     {
         std::string msg = ":server 462 " + client.getdisplayNick() + " :You may not reregister\r\n";
