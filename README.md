@@ -47,9 +47,19 @@ All messages sent by the server use the standard IRC prefix format `nick!user@ho
 
 The server automatically monitors all connected clients using a periodic ping mechanism:
 
-- Every **90 seconds** of inactivity, the server sends `PING :server` to the client.
+- Every **90 seconds** of inactivity, the server sends `:server PING :server` to the client.
 - The client must reply with `PONG :server` within **120 seconds**.
 - If no `PONG` is received within the timeout window, the client is disconnected with the reason `Ping timeout` and all joined channels are notified.
+
+> **Note:** IRC clients like irssi handle PING/PONG silently in the background — nothing will appear in the client window. Activity is visible in the **server terminal** instead.
+
+### Server terminal output
+
+```
+[PING] Gonderildi -> ebr          # PING sent to client after 90s of inactivity
+[PONG] Alindi <- ebr              # PONG received from client (irssi auto-replies)
+[PING] Timeout: ebr (120s beklendi)  # no PONG received, client disconnected
+```
 
 These intervals are defined as compile-time constants in `includes/Server.hpp`:
 
