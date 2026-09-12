@@ -38,6 +38,8 @@ void Server::executeCommand(int sockFd, std::string cmd, std::vector<std::string
         cmdNotice(sockFd, client, args);
     else if (cmd == "PING")
         cmdPing(sockFd, client, args);
+    else if (cmd == "PONG")
+        cmdPong(sockFd, client, args);
     else if (cmd == "QUIT")
         cmdQuit(sockFd, client, args);
     else if (cmd == "PART")
@@ -160,7 +162,9 @@ void Server::cmdNick(int sockFd, Client &client, std::vector<std::string> args)
 
     if (!oldNick.empty() && client.getsuccesLogin())
     {
-        std::string nickMsg = ":" + oldNick + " NICK :" + newNick + "\r\n";
+        // NICK mesajı için eski prefix'i elle oluşturuyoruz (nick değişmeden önceki hali)
+        std::string oldPrefix = oldNick + "!" + (client.getuserName().empty() ? "unknown" : client.getuserName()) + "@" + client.getHostname();
+        std::string nickMsg = ":" + oldPrefix + " NICK :" + newNick + "\r\n";
         sendMessage(sockFd, nickMsg);
 
         std::vector<int> targetFds;

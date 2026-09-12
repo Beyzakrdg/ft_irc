@@ -1,6 +1,7 @@
 #ifndef SERVER_HPP
 #define SERVER_HPP
 
+#include <arpa/inet.h>
 #include <fcntl.h>
 #include <map>
 #include <netinet/in.h>
@@ -11,8 +12,14 @@
 #include <unistd.h>
 #include <vector>
 #include <iostream>
+#include <ctime>
 #include "Client.hpp"
 #include "Channel.hpp"
+
+// Sunucu kac saniyede bir PING atar
+#define PING_INTERVAL 90
+// PONG gelmezse kac saniye sonra baglanti kesilir
+#define PING_TIMEOUT  120
 
 class Server {
 private:
@@ -39,8 +46,11 @@ private:
   void cmdPrivmsg(int sockFd, Client &client, std::vector<std::string> args);
   void cmdNotice(int sockFd, Client &client, std::vector<std::string> args);
   void cmdPing(int sockFd, Client &client, std::vector<std::string> args);
+  void cmdPong(int sockFd, Client &client, std::vector<std::string> args);
   void cmdQuit(int sockFd, Client &client, std::vector<std::string> args);
   void cmdPart(int sockFd, Client &client, std::vector<std::string> args);
+
+  void checkPingTimeouts();
 
   void disconnectClient(int sockFd);
   void flushOutBuffer(int sockFd);

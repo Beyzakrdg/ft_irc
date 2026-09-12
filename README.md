@@ -10,6 +10,8 @@ A fully functional IRC server written in C++98, built as part of the 42 curricul
 
 `ft_irc` is a custom IRC server that allows multiple clients to connect simultaneously and communicate through channels and private messages. The server runs on a single thread using non-blocking sockets and `poll()` for I/O multiplexing — no `fork()`, no threads.
 
+All messages sent by the server use the standard IRC prefix format `nick!user@host`, ensuring full compatibility with clients like **irssi**.
+
 ### Supported Commands
 
 | Command   | Description                                         |
@@ -20,11 +22,13 @@ A fully functional IRC server written in C++98, built as part of the 42 curricul
 | `JOIN`    | Join a channel (created if it doesn't exist)        |
 | `PART`    | Leave a channel                                     |
 | `PRIVMSG` | Send a message to a user or channel                 |
+| `NOTICE`  | Send a notice to a user or channel                  |
 | `KICK`    | Remove a user from a channel (operator only)        |
 | `INVITE`  | Invite a user to a channel (operator only)          |
 | `TOPIC`   | View or change a channel's topic                    |
 | `MODE`    | Set channel modes (see below)                       |
-| `PING`    | Keep-alive / connection check                       |
+| `PING`    | Client-initiated connection check; server replies with `PONG` |
+| `PONG`    | Response to server-initiated keepalive `PING`       |
 | `QUIT`    | Disconnect from the server                          |
 
 ### Channel Modes (via `MODE`)
@@ -36,6 +40,23 @@ A fully functional IRC server written in C++98, built as part of the 42 curricul
 | `+k` | Channel key (password)          |
 | `+o` | Grant/revoke operator privilege |
 | `+l` | Set user limit                  |
+
+---
+
+## Keepalive — Server-Side Ping/Pong
+
+The server automatically monitors all connected clients using a periodic ping mechanism:
+
+- Every **90 seconds** of inactivity, the server sends `PING :server` to the client.
+- The client must reply with `PONG :server` within **120 seconds**.
+- If no `PONG` is received within the timeout window, the client is disconnected with the reason `Ping timeout` and all joined channels are notified.
+
+These intervals are defined as compile-time constants in `includes/Server.hpp`:
+
+```cpp
+#define PING_INTERVAL 90   // seconds between pings
+#define PING_TIMEOUT  120  // seconds to wait for PONG before disconnecting
+```
 
 ---
 

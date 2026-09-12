@@ -77,6 +77,8 @@ void Server::init()
 
 void Server::run()
 {
+    time_t lastPingCheck = time(NULL);
+
     while (_running)
     {
         int pollResult = poll(&fds[0], fds.size(), 500);
@@ -110,8 +112,77 @@ void Server::run()
                 flushOutBuffer(fds[i].fd);
             }
         }
+
+        // Her saniye ping/timeout kontrolu yap
+        time_t now = time(NULL);
+        if (now - lastPingCheck >= 1)
+        {
+            lastPingCheck = now;
+            checkPingTimeouts();
+        }
     }
     std::cout << "Server stopped." << std::endl;
+}
+
+void Server::checkPingTimeouts()
+{
+    time_t now = time(NULL);
+    std::vector<int> toDisconnect;
+
+    for (std::map<int, Client>::iterator it = clients.begin(); it != clients.end(); ++it)
+    {
+        Client &client = it->second;
+
+        // Henuz login olmamis clientlari atla
+        if (!client.getsuccesLogin())
+            continue;
+
+        time_t lastPong     = client.getLastPong();
+        time_t lastPingSent = client.getLastPingSent();
+
+        // PING_TIMEOUT suresi doldu ve biz PONG bekliyorduk -> baglantıyı kes
+        if (lastPingSent != 0 && (now - lastPingSent) >= PING_TIMEOUT)
+        {
+            toDisconnect.push_back(it->first);
+            continue;
+        }
+
+        // Henuz PING gondermemissek ya da bir onceki PONG geldikten beri
+        // PING_INTERVAL gecti -> yeni PING gonder
+        if (lastPingSent == 0 && (now - lastPong) >= PING_INTERVAL)
+        {
+            std::string pingMsg = "PING :server\r\n";
+            sendMessage(it->first, pingMsg);
+            client.setLastPingSent(now);
+        }
+    }
+
+    // Zaman asimina ugrayan clientlari baglantidan at
+    for (size_t i = 0; i < toDisconnect.size(); ++i)
+    {
+        std::map<int, Client>::iterator it = clients.find(toDisconnect[i]);
+        if (it != clients.end())
+        {
+            // Tum kanallara QUIT bildir
+            std::string quitMsg = ":" + it->second.getPrefix() + " QUIT :Ping timeout\r\n";
+            for (std::map<std::string, Channel>::iterator chanIt = channels.begin();
+                 chanIt != channels.end(); ++chanIt)
+            {
+                if (chanIt->second.isClientInChannel(&it->second))
+                    chanIt->second.broadcastMessage(quitMsg, &it->second, outBuffers, fds);
+            }
+        }
+        disconnectClient(toDisconnect[i]);
+        // disconnectClient fd'yi fds listesinden siler, biz burada sadece clients'i temizledik
+        for (size_t j = 0; j < fds.size(); ++j)
+        {
+            if (fds[j].fd == toDisconnect[i])
+            {
+                fds.erase(fds.begin() + j);
+                break;
+            }
+        }
+    }
 }
 
 bool Server::getClientData(int sockFd)
@@ -192,10 +263,15 @@ void Server::acceptConnection()
     clientPollFd.events = POLLIN;
     clientPollFd.revents = 0;
     fds.push_back(clientPollFd);
-    
+
     clients.insert(std::make_pair(sockFd, Client(sockFd)));
 
-
+    // Store client's IP address as hostname
+    char hostBuf[INET_ADDRSTRLEN];
+    if (inet_ntop(AF_INET, &clientAddr.sin_addr, hostBuf, sizeof(hostBuf)) != NULL)
+        clients.at(sockFd).setHostname(std::string(hostBuf));
+    else
+        clients.at(sockFd).setHostname("localhost");
 }
 
 void Server::parseMessage(int sockFd, std::string line)
@@ -245,7 +321,7 @@ void Server::disconnectClient(int sockFd)
     if (it != clients.end())
     {
         Client* clientPtr = &(it->second);
-        std::string quitMsg = ":" + clientPtr->getdisplayNick() + " QUIT :Connection lost\r\n";
+        std::string quitMsg = ":" + clientPtr->getPrefix() + " QUIT :Connection lost\r\n";
         std::map<std::string, Channel>::iterator chanIt = channels.begin();
         while (chanIt != channels.end())
         {

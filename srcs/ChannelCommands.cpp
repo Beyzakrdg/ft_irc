@@ -84,7 +84,7 @@ void Server::cmdJoin(int sockFd, Client &client, std::vector<std::string> args)
 
         chan.addClient(&client);
         chan.removeInvite(client.getdisplayNick());
-        std::string joinMsg = ":" + client.getdisplayNick() + " JOIN :" + channelName + "\r\n";
+        std::string joinMsg = ":" + client.getPrefix() + " JOIN :" + channelName + "\r\n";
         chan.broadcastMessage(joinMsg, NULL, outBuffers, fds);
 
         if (!chan.getTopic().empty())
@@ -145,7 +145,7 @@ void Server::cmdPart(int sockFd, Client &client, std::vector<std::string> args)
         return;
     }
 
-    std::string partMsg = ":" + client.getdisplayNick() + " PART " + channelName;
+    std::string partMsg = ":" + client.getPrefix() + " PART " + channelName;
     if (!reason.empty())
     {
         partMsg += " :" + reason;
@@ -213,7 +213,7 @@ void Server::cmdTopic(int sockFd, Client &client, std::vector<std::string> args)
         std::string newTopic = args[1];
         chan.setTopic(newTopic);
 
-        std::string topicMsg = ":" + client.getdisplayNick() + " TOPIC " + channelName + " :" + newTopic + "\r\n";
+        std::string topicMsg = ":" + client.getPrefix() + " TOPIC " + channelName + " :" + newTopic + "\r\n";
         chan.broadcastMessage(topicMsg, NULL, outBuffers, fds);
     }
 }
@@ -269,7 +269,7 @@ void Server::cmdKick(int sockFd, Client &client, std::vector<std::string> args)
         sendMessage(sockFd, msg);
         return;
     }
-    std::string kickMsg = ":" + client.getdisplayNick() + " KICK " + channelName + " " + targetNick + " :" + reason + "\r\n";
+    std::string kickMsg = ":" + client.getPrefix() + " KICK " + channelName + " " + targetNick + " :" + reason + "\r\n";
     chan.broadcastMessage(kickMsg, NULL, outBuffers, fds);
 
     chan.removeClient(targetClient);
@@ -332,7 +332,7 @@ void Server::cmdInvite(int sockFd, Client &client, std::vector<std::string> args
     chan.addInvite(targetNick);
     std::string replyMsg = ":server 341 " + client.getdisplayNick() + " " + targetNick + " " + channelName + "\r\n";
     sendMessage(sockFd, replyMsg);
-    std::string inviteMsg = ":" + client.getdisplayNick() + " INVITE " + targetNick + " :" + channelName + "\r\n";
+    std::string inviteMsg = ":" + client.getPrefix() + " INVITE " + targetNick + " :" + channelName + "\r\n";
     sendMessage(targetClient->getFd(), inviteMsg);
 }
 
@@ -391,13 +391,13 @@ void Server::cmdMode(int sockFd, Client &client, std::vector<std::string> args)
         else if (m == 'i')
         {
             chan.setInviteOnly(adding);
-            std::string broadcast = ":" + client.getdisplayNick() + " MODE " + target + (adding ? " +i\r\n" : " -i\r\n");
+            std::string broadcast = ":" + client.getPrefix() + " MODE " + target + (adding ? " +i\r\n" : " -i\r\n");
             chan.broadcastMessage(broadcast, NULL, outBuffers, fds);
         }
         else if (m == 't')
         {
             chan.setTopicRestricted(adding);
-            std::string broadcast = ":" + client.getdisplayNick() + " MODE " + target + (adding ? " +t\r\n" : " -t\r\n");
+            std::string broadcast = ":" + client.getPrefix() + " MODE " + target + (adding ? " +t\r\n" : " -t\r\n");
             chan.broadcastMessage(broadcast, NULL, outBuffers, fds);
         }
         else if (m == 'k')
@@ -407,14 +407,14 @@ void Server::cmdMode(int sockFd, Client &client, std::vector<std::string> args)
                 if (argIndex < args.size())
                 {
                     chan.setKey(args[argIndex++]);
-                    std::string broadcast = ":" + client.getdisplayNick() + " MODE " + target + " +k " + chan.getKey() + "\r\n";
+                    std::string broadcast = ":" + client.getPrefix() + " MODE " + target + " +k " + chan.getKey() + "\r\n";
                     chan.broadcastMessage(broadcast, NULL, outBuffers, fds);
                 }
             }
             else
             {
                 chan.setKey("");
-                std::string broadcast = ":" + client.getdisplayNick() + " MODE " + target + " -k\r\n";
+                std::string broadcast = ":" + client.getPrefix() + " MODE " + target + " -k\r\n";
                 chan.broadcastMessage(broadcast, NULL, outBuffers, fds);
             }
         }
@@ -439,13 +439,13 @@ void Server::cmdMode(int sockFd, Client &client, std::vector<std::string> args)
                     if (adding)
                     {
                         chan.addOperator(targetClient);
-                        std::string broadcast = ":" + client.getdisplayNick() + " MODE " + target + " +o " + targetNick + "\r\n";
+                        std::string broadcast = ":" + client.getPrefix() + " MODE " + target + " +o " + targetNick + "\r\n";
                         chan.broadcastMessage(broadcast, NULL, outBuffers, fds);
                     }
                     else
                     {
                         chan.removeOperator(targetClient);
-                        std::string broadcast = ":" + client.getdisplayNick() + " MODE " + target + " -o " + targetNick + "\r\n";
+                        std::string broadcast = ":" + client.getPrefix() + " MODE " + target + " -o " + targetNick + "\r\n";
                         chan.broadcastMessage(broadcast, NULL, outBuffers, fds);
                     }
                 }
@@ -463,7 +463,7 @@ void Server::cmdMode(int sockFd, Client &client, std::vector<std::string> args)
                         chan.setUserLimit(limit);
                         char buf[32];
                         snprintf(buf, sizeof(buf), "%d", limit);
-                        std::string broadcast = ":" + client.getdisplayNick() + " MODE " + target + " +l " + buf + "\r\n";
+                        std::string broadcast = ":" + client.getPrefix() + " MODE " + target + " +l " + buf + "\r\n";
                         chan.broadcastMessage(broadcast, NULL, outBuffers, fds);
                     }
                 }
@@ -471,7 +471,7 @@ void Server::cmdMode(int sockFd, Client &client, std::vector<std::string> args)
             else
             {
                 chan.setUserLimit(-1);
-                std::string broadcast = ":" + client.getdisplayNick() + " MODE " + target + " -l\r\n";
+                std::string broadcast = ":" + client.getPrefix() + " MODE " + target + " -l\r\n";
                 chan.broadcastMessage(broadcast, NULL, outBuffers, fds);
             }
         }

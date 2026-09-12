@@ -1,8 +1,9 @@
 #include "../includes/Client.hpp"
 
 Client::Client(int clientFd)
-    : fd(clientFd), displayNick(""), userName(""), hasPassword(false), successLogin(false),
-      buffer("") {}
+    : fd(clientFd), displayNick(""), userName(""), hostname("localhost"),
+      hasPassword(false), successLogin(false),
+      buffer(""), lastPong(time(NULL)), lastPingSent(0) {}
 
 int Client::getFd() const
 {
@@ -28,6 +29,16 @@ std::string Client::getuserName() const
 {
     return userName;
 }
+std::string Client::getHostname() const
+{
+    return hostname;
+}
+std::string Client::getPrefix() const
+{
+    std::string user = userName.empty() ? "unknown" : userName;
+    std::string host = hostname.empty() ? "localhost" : hostname;
+    return displayNick + "!" + user + "@" + host;
+}
 void Client::setdisplayNick(std::string nick)
 {
     displayNick = nick;
@@ -35,6 +46,26 @@ void Client::setdisplayNick(std::string nick)
 void Client::setuserName(std::string user)
 {
     userName = user;
+}
+void Client::setHostname(std::string host)
+{
+    hostname = host;
+}
+time_t Client::getLastPong() const
+{
+    return lastPong;
+}
+time_t Client::getLastPingSent() const
+{
+    return lastPingSent;
+}
+void Client::setLastPong(time_t t)
+{
+    lastPong = t;
+}
+void Client::setLastPingSent(time_t t)
+{
+    lastPingSent = t;
 }
 void Client::setsuccessLogin(bool status)
 {

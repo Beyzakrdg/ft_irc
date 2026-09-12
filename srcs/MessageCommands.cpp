@@ -27,7 +27,7 @@ void Server::cmdPrivmsg(int sockFd, Client &client, std::vector<std::string> arg
             Channel &chan = channels.at(target);
             if (chan.isClientInChannel(&client))
             {
-                std::string privMsg = ":" + client.getdisplayNick() + " PRIVMSG " + target + " :" + message + "\r\n";
+                std::string privMsg = ":" + client.getPrefix() + " PRIVMSG " + target + " :" + message + "\r\n";
                 chan.broadcastMessage(privMsg, &client, outBuffers, fds);
             }
             else
@@ -47,7 +47,7 @@ void Server::cmdPrivmsg(int sockFd, Client &client, std::vector<std::string> arg
         Client* targetClient = getClientByNick(target);
         if (targetClient)
         {
-            std::string privMsg = ":" + client.getdisplayNick() + " PRIVMSG " + target + " :" + message + "\r\n";
+            std::string privMsg = ":" + client.getPrefix() + " PRIVMSG " + target + " :" + message + "\r\n";
             sendMessage(targetClient->getFd(), privMsg);
         }
         else
@@ -74,7 +74,7 @@ void Server::cmdNotice(int sockFd, Client &client, std::vector<std::string> args
             Channel &chan = channels.at(target);
             if (chan.isClientInChannel(&client))
             {
-                std::string noticeMsg = ":" + client.getdisplayNick() + " NOTICE " + target + " :" + message + "\r\n";
+                std::string noticeMsg = ":" + client.getPrefix() + " NOTICE " + target + " :" + message + "\r\n";
                 chan.broadcastMessage(noticeMsg, &client, outBuffers, fds);
             }
         }
@@ -84,7 +84,7 @@ void Server::cmdNotice(int sockFd, Client &client, std::vector<std::string> args
         Client* targetClient = getClientByNick(target);
         if (targetClient)
         {
-            std::string noticeMsg = ":" + client.getdisplayNick() + " NOTICE " + target + " :" + message + "\r\n";
+            std::string noticeMsg = ":" + client.getPrefix() + " NOTICE " + target + " :" + message + "\r\n";
             sendMessage(targetClient->getFd(), noticeMsg);
         }
     }
@@ -103,13 +103,23 @@ void Server::cmdPing(int sockFd, Client &client, std::vector<std::string> args)
     sendMessage(sockFd, msg);
 }
 
+void Server::cmdPong(int sockFd, Client &client, std::vector<std::string> args)
+{
+    (void)sockFd;
+    (void)args;
+    // Sunucunun gonderdigi PING'e karsilik PONG geldi:
+    // lastPong'u guncelle, lastPingSent'i sifirla (bir sonraki donguye kadar bekleme yok)
+    client.setLastPong(time(NULL));
+    client.setLastPingSent(0);
+}
+
 void Server::cmdQuit(int sockFd, Client &client, std::vector<std::string> args)
 {
     std::string reason = "Client Quit";
     if (!args.empty())
         reason = args[0];
 
-    std::string quitMsg = ":" + client.getdisplayNick() + " QUIT :" + reason + "\r\n";
+    std::string quitMsg = ":" + client.getPrefix() + " QUIT :" + reason + "\r\n";
 
     std::map<std::string, Channel>::iterator chanIt = channels.begin();
     while (chanIt != channels.end())
