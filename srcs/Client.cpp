@@ -2,8 +2,7 @@
 
 Client::Client(int clientFd)
     : fd(clientFd), displayNick(""), userName(""), hostname("localhost"),
-      hasPassword(false), successLogin(false),
-      buffer(""), lastPong(time(NULL)), lastPingSent(0) {}
+      hasPassword(false), successLogin(false), buffer("") {}
 
 int Client::getFd() const
 {
@@ -58,22 +57,6 @@ void Client::setuserName(std::string user)
 void Client::setHostname(std::string host)
 {
     hostname = host;
-}
-time_t Client::getLastPong() const
-{
-    return lastPong;
-}
-time_t Client::getLastPingSent() const
-{
-    return lastPingSent;
-}
-void Client::setLastPong(time_t t)
-{
-    lastPong = t;
-}
-void Client::setLastPingSent(time_t t)
-{
-    lastPingSent = t;
 }
 void Client::setsuccessLogin(bool status)
 {

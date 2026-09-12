@@ -77,8 +77,6 @@ void Server::init()
 
 void Server::run()
 {
-    time_t lastPingCheck = time(NULL);
-
     while (_running)
     {
         int pollResult = poll(&fds[0], fds.size(), 500);
@@ -112,77 +110,8 @@ void Server::run()
                 flushOutBuffer(fds[i].fd);
             }
         }
-
-        time_t now = time(NULL);
-        if (now - lastPingCheck >= 1)
-        {
-            lastPingCheck = now;
-            checkPingTimeouts();
-        }
     }
     std::cout << "Server stopped." << std::endl;
-}
-
-void Server::checkPingTimeouts()
-{
-    time_t now = time(NULL);
-    std::vector<int> toDisconnect;
-
-    for (std::map<int, Client>::iterator it = clients.begin(); it != clients.end(); ++it)
-    {
-        Client &client = it->second;
-
-        if (!client.getsuccesLogin())
-            continue;
-
-        time_t lastPong     = client.getLastPong();
-        time_t lastPingSent = client.getLastPingSent();
-
-        if (lastPingSent != 0 && (now - lastPingSent) >= PING_TIMEOUT)
-        {
-            std::cout << "[PING] Timeout: " << client.getPrefix()
-                      << " (" << (now - lastPingSent) << "s)" << std::endl;
-            toDisconnect.push_back(it->first);
-            continue;
-        }
-
-        if (lastPingSent == 0 && (now - lastPong) >= PING_INTERVAL)
-        {
-            // RFC uyumlu: token olarak unix timestamp kullan
-            char token[32];
-            snprintf(token, sizeof(token), "%ld", (long)now);
-            std::string pingMsg = "PING :";
-            pingMsg += token;
-            pingMsg += "\r\n";
-            sendMessage(it->first, pingMsg);
-            client.setLastPingSent(now);
-            std::cout << "[PING] -> " << client.getPrefix() << std::endl;
-        }
-    }
-
-    for (size_t i = 0; i < toDisconnect.size(); ++i)
-    {
-        std::map<int, Client>::iterator it = clients.find(toDisconnect[i]);
-        if (it != clients.end())
-        {
-            std::string quitMsg = ":" + it->second.getPrefix() + " QUIT :Ping timeout\r\n";
-            for (std::map<std::string, Channel>::iterator chanIt = channels.begin();
-                 chanIt != channels.end(); ++chanIt)
-            {
-                if (chanIt->second.isClientInChannel(&it->second))
-                    chanIt->second.broadcastMessage(quitMsg, &it->second, outBuffers, fds);
-            }
-        }
-        disconnectClient(toDisconnect[i]);
-        for (size_t j = 0; j < fds.size(); ++j)
-        {
-            if (fds[j].fd == toDisconnect[i])
-            {
-                fds.erase(fds.begin() + j);
-                break;
-            }
-        }
-    }
 }
 
 bool Server::getClientData(int sockFd)

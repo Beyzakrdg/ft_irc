@@ -20,9 +20,6 @@
 #include "Client.hpp"
 #include "Channel.hpp"
 
-#define PING_INTERVAL 90
-#define PING_TIMEOUT  120
-
 class Server {
 private:
   int portNo;
@@ -51,8 +48,6 @@ private:
   void cmdPong(int sockFd, Client &client, std::vector<std::string> args);
   void cmdQuit(int sockFd, Client &client, std::vector<std::string> args);
   void cmdPart(int sockFd, Client &client, std::vector<std::string> args);
-
-  void checkPingTimeouts();
 
   void disconnectClient(int sockFd);
   void flushOutBuffer(int sockFd);

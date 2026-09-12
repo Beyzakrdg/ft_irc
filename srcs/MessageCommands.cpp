@@ -108,11 +108,8 @@ void Server::cmdPing(int sockFd, Client &client, std::vector<std::string> args)
 void Server::cmdPong(int sockFd, Client &client, std::vector<std::string> args)
 {
     (void)sockFd;
+    (void)client;
     (void)args;
-    
-    client.setLastPong(time(NULL));
-    client.setLastPingSent(0);
-    std::cout << "[PONG] <- " << client.getPrefix() << std::endl;
 }
 
 void Server::cmdQuit(int sockFd, Client &client, std::vector<std::string> args)
