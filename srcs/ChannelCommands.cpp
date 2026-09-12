@@ -1,6 +1,4 @@
 #include "../includes/Server.hpp"
-#include <cstdlib>
-#include <cstdio>
 
 Channel* Server::getValidChannel(int sockFd, Client &client, const std::string &name)
 {

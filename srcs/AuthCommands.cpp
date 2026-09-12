@@ -1,5 +1,4 @@
 #include "../includes/Server.hpp"
-#include <cctype>
 
 static std::string getNickOrStar(const Client &client)
 {

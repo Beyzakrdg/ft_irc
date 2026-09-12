@@ -5,6 +5,7 @@
 #include <vector>
 #include <map>
 #include <poll.h>
+#include <sys/socket.h>
 #include "Client.hpp"
 
 class Channel {
