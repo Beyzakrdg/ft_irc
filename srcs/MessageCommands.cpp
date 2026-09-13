@@ -4,19 +4,19 @@ void Server::cmdPrivmsg(int sockFd, Client &client, std::vector<std::string> arg
 {
     if (!client.getsuccesLogin())
     {
-        std::string msg = ":server 451 * :You have not registered\r\n";
+        std::string msg = ":server 451 * :You have not registered (451)\r\n";
         sendMessage(sockFd, msg);
         return;
     }
     if (args.empty())
     {
-        std::string msg = ":server 411 " + client.getdisplayNick() + " :No recipient given (PRIVMSG)\r\n";
+        std::string msg = ":server 411 " + client.getdisplayNick() + " :No recipient given (PRIVMSG) (411)\r\n";
         sendMessage(sockFd, msg);
         return;
     }
     if (args.size() < 2 || args[1].empty())
     {
-        std::string msg = ":server 412 " + client.getdisplayNick() + " :No text to send\r\n";
+        std::string msg = ":server 412 " + client.getdisplayNick() + " :No text to send (412)\r\n";
         sendMessage(sockFd, msg);
         return;
     }
@@ -37,13 +37,13 @@ void Server::cmdPrivmsg(int sockFd, Client &client, std::vector<std::string> arg
             }
             else
             {
-                std::string msg = ":server 404 " + client.getdisplayNick() + " " + target + " :Cannot send to channel\r\n";
+                std::string msg = ":server 404 " + client.getdisplayNick() + " " + target + " :Cannot send to channel (404)\r\n";
                 sendMessage(sockFd, msg);
             }
         }
         else
         {
-            std::string msg = ":server 401 " + client.getdisplayNick() + " " + target + " :No such nick/channel\r\n";
+            std::string msg = ":server 401 " + client.getdisplayNick() + " " + target + " :No such nick/channel (401)\r\n";
             sendMessage(sockFd, msg);
         }
     }
@@ -57,7 +57,7 @@ void Server::cmdPrivmsg(int sockFd, Client &client, std::vector<std::string> arg
         }
         else
         {
-            std::string msg = ":server 401 " + client.getdisplayNick() + " " + target + " :No such nick/channel\r\n";
+            std::string msg = ":server 401 " + client.getdisplayNick() + " " + target + " :No such nick/channel (401)\r\n";
             sendMessage(sockFd, msg);
         }
     }
@@ -100,10 +100,10 @@ void Server::cmdPing(int sockFd, Client &client, std::vector<std::string> args)
 {
     if (args.empty())
     {
-        std::string msg = ":server 409 * :No origin specified\r\n";
+        std::string msg = ":server 409 * :No origin specified (409)\r\n";
         sendMessage(sockFd, msg);
         std::cout << "[PING] <- " << client.getPrefix() << " (no origin)" << std::endl;
-        std::cout << "[409]  -> " << client.getPrefix() << " :server 409 * :No origin specified" << std::endl;
+        std::cout << "[409]  -> " << client.getPrefix() << " :server 409 * :No origin specified (409)" << std::endl;
         return;
     }
     std::string msg = ":server PONG server :" + args[0] + "\r\n";

@@ -81,20 +81,20 @@ void Server::cmdPass(int sockFd, Client &client, std::vector<std::string> args)
 {
     if (client.getsuccesLogin())
     {
-        std::string msg = ":server 462 " + client.getdisplayNick() + " :You may not reregister\r\n";
+        std::string msg = ":server 462 " + client.getdisplayNick() + " :You may not reregister (462)\r\n";
         sendMessage(sockFd, msg);
         return;
     }
     if (args.empty())
     {
-        std::string msg = ":server 461 * PASS :Not enough parameters\r\n";
+        std::string msg = ":server 461 * PASS :Not enough parameters (461)\r\n";
         sendMessage(sockFd, msg);
         return;
     }
     if (args[0] != psswd)
     {
         client.setHasPassword(false);
-        std::string msg = ":server 464 * :Password incorrect\r\n";
+        std::string msg = ":server 464 * :Password incorrect (464)\r\n";
         sendMessage(sockFd, msg);
         return;
     }
@@ -105,14 +105,14 @@ void Server::cmdNick(int sockFd, Client &client, std::vector<std::string> args)
 {
     if (!client.getsuccesLogin() && !client.getHasPassword())
     {
-        std::string msg = ":server 451 * :You have not registered, send PASS first\r\n";
+        std::string msg = ":server 451 * :You have not registered, send PASS first (451)\r\n";
         sendMessage(sockFd, msg);
         return;
     }
     client.setNickSent(true);
     if (args.empty())
     {
-        std::string msg = ":server 431 " + getNickOrStar(client) + " :No nickname given\r\n";
+        std::string msg = ":server 431 " + getNickOrStar(client) + " :No nickname given (431)\r\n";
         sendMessage(sockFd, msg);
         return;
     }
@@ -121,7 +121,7 @@ void Server::cmdNick(int sockFd, Client &client, std::vector<std::string> args)
 
     if (newNick.empty() || newNick.length() > 9)
     {
-        std::string msg = ":server 432 " + getNickOrStar(client) + " " + newNick + " :Erroneous nickname\r\n";
+        std::string msg = ":server 432 " + getNickOrStar(client) + " " + newNick + " :Erroneous nickname (432)\r\n";
         sendMessage(sockFd, msg);
         return;
     }
@@ -131,7 +131,7 @@ void Server::cmdNick(int sockFd, Client &client, std::vector<std::string> args)
         && first != '^' && first != '_' && first != '`'
         && first != '{' && first != '|' && first != '}')
     {
-        std::string msg = ":server 432 " + getNickOrStar(client) + " " + newNick + " :Erroneous nickname\r\n";
+        std::string msg = ":server 432 " + getNickOrStar(client) + " " + newNick + " :Erroneous nickname (432)\r\n";
         sendMessage(sockFd, msg);
         return;
     }
@@ -142,7 +142,7 @@ void Server::cmdNick(int sockFd, Client &client, std::vector<std::string> args)
             && c != '^' && c != '_' && c != '`'
             && c != '{' && c != '|' && c != '}')
         {
-            std::string msg = ":server 432 " + getNickOrStar(client) + " " + newNick + " :Erroneous nickname\r\n";
+            std::string msg = ":server 432 " + getNickOrStar(client) + " " + newNick + " :Erroneous nickname (432)\r\n";
             sendMessage(sockFd, msg);
             return;
         }
@@ -150,7 +150,7 @@ void Server::cmdNick(int sockFd, Client &client, std::vector<std::string> args)
 
     if (getClientByNick(newNick) != NULL && getClientByNick(newNick)->getFd() != sockFd)
     {
-        std::string msg = ":server 433 " + getNickOrStar(client) + " " + newNick + " :Nickname is already in use\r\n";
+        std::string msg = ":server 433 " + getNickOrStar(client) + " " + newNick + " :Nickname is already in use (433)\r\n";
         sendMessage(sockFd, msg);
         return;
     }
@@ -202,25 +202,25 @@ void Server::cmdUser(int sockFd, Client &client, std::vector<std::string> args)
 {
     if (client.getsuccesLogin())
     {
-        std::string msg = ":server 462 " + client.getdisplayNick() + " :You may not reregister\r\n";
+        std::string msg = ":server 462 " + client.getdisplayNick() + " :You may not reregister (462)\r\n";
         sendMessage(sockFd, msg);
         return;
     }
     if (!client.getHasPassword())
     {
-        std::string msg = ":server 451 * :You have not registered, send PASS first\r\n";
+        std::string msg = ":server 451 * :You have not registered, send PASS first (451)\r\n";
         sendMessage(sockFd, msg);
         return;
     }
     if (!client.getNickSent())
     {
-        std::string msg = ":server 451 * :You have not registered, send NICK first\r\n";
+        std::string msg = ":server 451 * :You have not registered, send NICK first (451)\r\n";
         sendMessage(sockFd, msg);
         return;
     }
     if (args.size() < 4)
     {
-        std::string msg = ":server 461 " + getNickOrStar(client) + " USER :Not enough parameters\r\n";
+        std::string msg = ":server 461 " + getNickOrStar(client) + " USER :Not enough parameters (461)\r\n";
         sendMessage(sockFd, msg);
         return;
     }
