@@ -98,15 +98,18 @@ void Server::cmdNotice(int sockFd, Client &client, std::vector<std::string> args
 
 void Server::cmdPing(int sockFd, Client &client, std::vector<std::string> args)
 {
-    (void)client;
     if (args.empty())
     {
         std::string msg = ":server 409 * :No origin specified\r\n";
         sendMessage(sockFd, msg);
+        std::cout << "[PING] <- " << client.getPrefix() << " (no origin)" << std::endl;
+        std::cout << "[409]  -> " << client.getPrefix() << " :server 409 * :No origin specified" << std::endl;
         return;
     }
     std::string msg = ":server PONG server :" + args[0] + "\r\n";
     sendMessage(sockFd, msg);
+    std::cout << "[PING] <- " << client.getPrefix() << " :" << args[0] << std::endl;
+    std::cout << "[PONG] -> " << client.getPrefix() << " :server PONG server :" << args[0] << std::endl;
 }
 
 void Server::cmdQuit(int sockFd, Client &client, std::vector<std::string> args)
