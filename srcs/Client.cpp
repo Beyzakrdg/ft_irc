@@ -2,7 +2,8 @@
 
 Client::Client(int clientFd)
     : fd(clientFd), displayNick(""), userName(""), hostname("localhost"),
-      hasPassword(false), successLogin(false), buffer("") {}
+      hasPassword(false), successLogin(false), buffer(""),
+      lastPong(0), waitingPong(false) {}
 
 int Client::getFd() const
 {
@@ -69,6 +70,22 @@ bool Client::getHasPassword() const
 void Client::setHasPassword(bool status)
 {
     hasPassword = status;
+}
+time_t Client::getLastPong() const
+{
+    return lastPong;
+}
+bool Client::isWaitingPong() const
+{
+    return waitingPong;
+}
+void Client::setLastPong(time_t t)
+{
+    lastPong = t;
+}
+void Client::setWaitingPong(bool status)
+{
+    waitingPong = status;
 }
 void Client::appendToBuffer(std::string data)
 {

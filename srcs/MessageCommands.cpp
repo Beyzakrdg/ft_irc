@@ -108,25 +108,20 @@ void Server::cmdPing(int sockFd, Client &client, std::vector<std::string> args)
 void Server::cmdPong(int sockFd, Client &client, std::vector<std::string> args)
 {
     (void)sockFd;
-    (void)client;
-    (void)args;
+    client.setWaitingPong(false);
+    client.setLastPong(time(NULL));
+    std::cout << "[PONG] <- " << client.getPrefix();
+    if (!args.empty())
+        std::cout << " :" << args.back();
+    std::cout << std::endl;
 }
 
 void Server::cmdQuit(int sockFd, Client &client, std::vector<std::string> args)
 {
+    (void)client;
     std::string reason = "Client Quit";
     if (!args.empty())
         reason = args[0];
 
-    std::string quitMsg = ":" + client.getPrefix() + " QUIT :" + reason + "\r\n";
-
-    std::map<std::string, Channel>::iterator chanIt = channels.begin();
-    while (chanIt != channels.end())
-    {
-        if (chanIt->second.isClientInChannel(&client))
-            chanIt->second.broadcastMessage(quitMsg, &client, outBuffers, fds);
-        ++chanIt;
-    }
-
-    disconnectClient(sockFd);
+    disconnectClient(sockFd, reason);
 }

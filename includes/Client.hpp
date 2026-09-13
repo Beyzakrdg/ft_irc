@@ -14,6 +14,8 @@ private:
   bool hasPassword;
   bool successLogin;
   std::string buffer;
+  time_t lastPong;
+  bool waitingPong;
 
 public:
   Client(int clientFd);
@@ -27,12 +29,16 @@ public:
   std::string getuserName() const;
   std::string getHostname() const;
   std::string getPrefix() const;
+  time_t getLastPong() const;
+  bool isWaitingPong() const;
 
   void setdisplayNick(std::string nick);
   void setuserName(std::string user);
   void setHostname(std::string host);
   void setsuccessLogin(bool status);
   void setHasPassword(bool status);
+  void setLastPong(time_t t);
+  void setWaitingPong(bool status);
 
   void appendToBuffer(std::string data);
   void clearBuffer();

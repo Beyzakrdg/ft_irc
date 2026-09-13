@@ -77,6 +77,8 @@ void Server::init()
 
 void Server::run()
 {
+    time_t lastPingCheck = time(NULL);
+
     while (_running)
     {
         int pollResult = poll(&fds[0], fds.size(), 500);
@@ -110,8 +112,39 @@ void Server::run()
                 flushOutBuffer(fds[i].fd);
             }
         }
+
+        time_t now = time(NULL);
+        if (now - lastPingCheck >= 1)
+        {
+            lastPingCheck = now;
+            sendPings();
+        }
     }
     std::cout << "Server stopped." << std::endl;
+}
+
+void Server::sendPings()
+{
+    time_t now = time(NULL);
+
+    for (std::map<int, Client>::iterator it = clients.begin(); it != clients.end(); ++it)
+    {
+        Client &client = it->second;
+
+        if (!client.getsuccesLogin())
+            continue;
+        if (client.isWaitingPong() || now - client.getLastPong() < PING_INTERVAL)
+            continue;
+
+        char token[32];
+        snprintf(token, sizeof(token), "%ld", (long)now);
+        std::string pingMsg = "PING :";
+        pingMsg += token;
+        pingMsg += "\r\n";
+        sendMessage(it->first, pingMsg);
+        client.setWaitingPong(true);
+        std::cout << "[PING] -> " << client.getPrefix() << " :" << token << std::endl;
+    }
 }
 
 bool Server::getClientData(int sockFd)
@@ -242,14 +275,14 @@ void Server::parseMessage(int sockFd, std::string line)
     executeCommand(sockFd, cmd, args);
 }
 
-void Server::disconnectClient(int sockFd)
+void Server::disconnectClient(int sockFd, const std::string &reason)
 {
 
     std::map<int, Client>::iterator it = clients.find(sockFd);
     if (it != clients.end())
     {
         Client* clientPtr = &(it->second);
-        std::string quitMsg = ":" + clientPtr->getPrefix() + " QUIT :Connection lost\r\n";
+        std::string quitMsg = ":" + clientPtr->getPrefix() + " QUIT :" + reason + "\r\n";
         std::map<std::string, Channel>::iterator chanIt = channels.begin();
         while (chanIt != channels.end())
         {

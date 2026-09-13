@@ -20,6 +20,8 @@
 #include "Client.hpp"
 #include "Channel.hpp"
 
+#define PING_INTERVAL 30
+
 class Server {
 private:
   int portNo;
@@ -49,7 +51,9 @@ private:
   void cmdQuit(int sockFd, Client &client, std::vector<std::string> args);
   void cmdPart(int sockFd, Client &client, std::vector<std::string> args);
 
-  void disconnectClient(int sockFd);
+  void sendPings();
+
+  void disconnectClient(int sockFd, const std::string &reason = "Connection lost");
   void flushOutBuffer(int sockFd);
   void updatePollEvents(int fd, short events);
 
