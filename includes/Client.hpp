@@ -25,7 +25,6 @@ public:
   std::string getBuffer() const;
   bool getsuccesLogin() const;
   bool getHasPassword() const;
-  bool isRegistered() const;
   std::string getuserName() const;
   std::string getHostname() const;
   std::string getPrefix() const;

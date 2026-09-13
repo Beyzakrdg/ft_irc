@@ -93,25 +93,24 @@ void Server::cmdPass(int sockFd, Client &client, std::vector<std::string> args)
         sendMessage(sockFd, msg);
         return;
     }
-    if (args[0] == psswd)
-        client.setHasPassword(true);
-    else
+    if (args[0] != psswd)
     {
+        client.setHasPassword(false);
         std::string msg = ":server 464 * :Password incorrect\r\n";
         sendMessage(sockFd, msg);
         return;
     }
-
-    if (!client.getsuccesLogin() && client.isRegistered())
-    {
-        client.setsuccessLogin(true);
-        std::string welcome = ":server 001 " + client.getdisplayNick() + " :Welcome to the ft_irc network " + client.getdisplayNick() + "\r\n";
-        sendMessage(sockFd, welcome);
-    }
+    client.setHasPassword(true);
 }
 
 void Server::cmdNick(int sockFd, Client &client, std::vector<std::string> args)
 {
+    if (!client.getsuccesLogin() && !client.getHasPassword())
+    {
+        std::string msg = ":server 451 * :You have not registered, send PASS first\r\n";
+        sendMessage(sockFd, msg);
+        return;
+    }
     if (args.empty())
     {
         std::string msg = ":server 431 " + getNickOrStar(client) + " :No nickname given\r\n";
@@ -191,13 +190,6 @@ void Server::cmdNick(int sockFd, Client &client, std::vector<std::string> args)
             sendMessage(targetFds[i], nickMsg);
         }
     }
-
-    if (!client.getsuccesLogin() && client.isRegistered())
-    {
-        client.setsuccessLogin(true);
-        std::string welcome = ":server 001 " + client.getdisplayNick() + " :Welcome to the ft_irc network " + client.getdisplayNick() + "\r\n";
-        sendMessage(sockFd, welcome);
-    }
 }
 
 void Server::cmdUser(int sockFd, Client &client, std::vector<std::string> args)
@@ -208,6 +200,18 @@ void Server::cmdUser(int sockFd, Client &client, std::vector<std::string> args)
         sendMessage(sockFd, msg);
         return;
     }
+    if (!client.getHasPassword())
+    {
+        std::string msg = ":server 451 * :You have not registered, send PASS first\r\n";
+        sendMessage(sockFd, msg);
+        return;
+    }
+    if (client.getdisplayNick().empty())
+    {
+        std::string msg = ":server 451 * :You have not registered, send NICK first\r\n";
+        sendMessage(sockFd, msg);
+        return;
+    }
     if (args.size() < 4)
     {
         std::string msg = ":server 461 " + getNickOrStar(client) + " USER :Not enough parameters\r\n";
@@ -215,11 +219,7 @@ void Server::cmdUser(int sockFd, Client &client, std::vector<std::string> args)
         return;
     }
     client.setuserName(args[0]);
-
-    if (!client.getsuccesLogin() && client.isRegistered())
-    {
-        client.setsuccessLogin(true);
-        std::string welcome = ":server 001 " + client.getdisplayNick() + " :Welcome to the ft_irc network " + client.getdisplayNick() + "\r\n";
-        sendMessage(sockFd, welcome);
-    }
+    client.setsuccessLogin(true);
+    std::string welcome = ":server 001 " + client.getdisplayNick() + " :Welcome to the ft_irc network " + client.getdisplayNick() + "\r\n";
+    sendMessage(sockFd, welcome);
 }

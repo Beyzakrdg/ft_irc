@@ -21,10 +21,6 @@ bool Client::getsuccesLogin() const
 {
     return successLogin;
 }
-bool Client::isRegistered() const
-{
-    return (hasPassword && !displayNick.empty() && !userName.empty());
-}
 std::string Client::getuserName() const
 {
     return userName;
