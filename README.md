@@ -112,4 +112,40 @@ The following resources were used to understand the IRC protocol and socket prog
 - [man 2 poll](https://man7.org/linux/man-pages/man2/poll.2.html)
 - [man 7 socket](https://man7.org/linux/man-pages/man7/socket.7.html)
 
-AI tools were used for research purposes (understanding IRC protocol details, socket programming concepts) and for bug fixing (identifying and resolving implementation errors). All code was written and understood by the project authors.
+---
+
+## AI Usage
+
+AI tools were used as a supplementary learning and debugging resource, not as a replacement for understanding or implementing the project.
+
+Our use of AI was mainly limited to two areas:
+
+### 1. Theoretical research and technical understanding
+
+AI was partially used to help research and clarify concepts related to:
+
+- IRC protocol behaviour
+- IRC commands and message formats
+- Client-server communication
+- TCP/IP sockets
+- Non-blocking I/O
+- `poll()` and I/O multiplexing
+- Socket-related system calls
+- Error handling and edge cases
+
+The information provided by AI was treated as a starting point. We checked the explanations against documentation, the project subject and our own implementation before using them.
+
+### 2. Debugging and error fixing
+
+AI was also partially used during debugging to help:
+
+- Understand error messages
+- Identify possible causes of implementation problems
+- Analyze unexpected server behaviour
+- Suggest possible debugging approaches
+- Investigate issues encountered during testing
+
+The suggested solutions were reviewed, tested and adapted by the project authors. We did not use AI to generate the complete project or blindly copy generated code.
+
+All implemented functionality was studied and understood by the project authors, and we remain responsible for the final implementation.
+
