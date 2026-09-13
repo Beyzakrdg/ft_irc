@@ -2,8 +2,7 @@
 
 Client::Client(int clientFd)
     : fd(clientFd), displayNick(""), userName(""), hostname("localhost"),
-      hasPassword(false), successLogin(false), buffer(""),
-      lastPong(0), waitingPong(false) {}
+      hasPassword(false), successLogin(false), nickSent(false), buffer("") {}
 
 int Client::getFd() const
 {
@@ -67,21 +66,13 @@ void Client::setHasPassword(bool status)
 {
     hasPassword = status;
 }
-time_t Client::getLastPong() const
+bool Client::getNickSent() const
 {
-    return lastPong;
+    return nickSent;
 }
-bool Client::isWaitingPong() const
+void Client::setNickSent(bool status)
 {
-    return waitingPong;
-}
-void Client::setLastPong(time_t t)
-{
-    lastPong = t;
-}
-void Client::setWaitingPong(bool status)
-{
-    waitingPong = status;
+    nickSent = status;
 }
 void Client::appendToBuffer(std::string data)
 {
@@ -96,7 +87,7 @@ void Client::eraseBuffer(size_t start, size_t length)
     buffer.erase(start, length);
 }
 
-static char ircLower(char c)
+static char ircLowerChar(char c)
 {
     if (c >= 'A' && c <= 'Z')
         return c + ('a' - 'A');
@@ -117,8 +108,16 @@ bool Client::nickEquals(const std::string &a, const std::string &b)
         return false;
     for (size_t i = 0; i < a.length(); i++)
     {
-        if (ircLower(a[i]) != ircLower(b[i]))
+        if (ircLowerChar(a[i]) != ircLowerChar(b[i]))
             return false;
     }
     return true;
+}
+
+std::string Client::ircLower(const std::string &str)
+{
+    std::string result = str;
+    for (size_t i = 0; i < result.length(); i++)
+        result[i] = ircLowerChar(result[i]);
+    return result;
 }

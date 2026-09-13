@@ -3,14 +3,18 @@
 void Server::cmdPrivmsg(int sockFd, Client &client, std::vector<std::string> args)
 {
     if (!client.getsuccesLogin())
+    {
+        std::string msg = ":server 451 * :You have not registered\r\n";
+        sendMessage(sockFd, msg);
         return;
+    }
     if (args.empty())
     {
         std::string msg = ":server 411 " + client.getdisplayNick() + " :No recipient given (PRIVMSG)\r\n";
         sendMessage(sockFd, msg);
         return;
     }
-    if (args.size() < 2)
+    if (args.size() < 2 || args[1].empty())
     {
         std::string msg = ":server 412 " + client.getdisplayNick() + " :No text to send\r\n";
         sendMessage(sockFd, msg);
@@ -22,13 +26,13 @@ void Server::cmdPrivmsg(int sockFd, Client &client, std::vector<std::string> arg
 
     if (target[0] == '#')
     {
-        std::map<std::string, Channel>::iterator chanIt = channels.find(target);
+        std::map<std::string, Channel>::iterator chanIt = channels.find(Client::ircLower(target));
         if (chanIt != channels.end())
         {
             Channel &chan = chanIt->second;
             if (chan.isClientInChannel(&client))
             {
-                std::string privMsg = ":" + client.getPrefix() + " PRIVMSG " + target + " :" + message + "\r\n";
+                std::string privMsg = ":" + client.getPrefix() + " PRIVMSG " + chan.getName() + " :" + message + "\r\n";
                 chan.broadcastMessage(privMsg, &client, outBuffers, fds);
             }
             else
@@ -46,7 +50,7 @@ void Server::cmdPrivmsg(int sockFd, Client &client, std::vector<std::string> arg
     else
     {
         Client* targetClient = getClientByNick(target);
-        if (targetClient)
+        if (targetClient && targetClient->getsuccesLogin())
         {
             std::string privMsg = ":" + client.getPrefix() + " PRIVMSG " + targetClient->getdisplayNick() + " :" + message + "\r\n";
             sendMessage(targetClient->getFd(), privMsg);
@@ -62,7 +66,7 @@ void Server::cmdPrivmsg(int sockFd, Client &client, std::vector<std::string> arg
 void Server::cmdNotice(int sockFd, Client &client, std::vector<std::string> args)
 {
     (void)sockFd;
-    if (!client.getsuccesLogin() || args.size() < 2)
+    if (!client.getsuccesLogin() || args.size() < 2 || args[1].empty())
         return;
 
     std::string target = args[0];
@@ -70,13 +74,13 @@ void Server::cmdNotice(int sockFd, Client &client, std::vector<std::string> args
 
     if (target[0] == '#')
     {
-        std::map<std::string, Channel>::iterator chanIt = channels.find(target);
+        std::map<std::string, Channel>::iterator chanIt = channels.find(Client::ircLower(target));
         if (chanIt != channels.end())
         {
             Channel &chan = chanIt->second;
             if (chan.isClientInChannel(&client))
             {
-                std::string noticeMsg = ":" + client.getPrefix() + " NOTICE " + target + " :" + message + "\r\n";
+                std::string noticeMsg = ":" + client.getPrefix() + " NOTICE " + chan.getName() + " :" + message + "\r\n";
                 chan.broadcastMessage(noticeMsg, &client, outBuffers, fds);
             }
         }
@@ -84,7 +88,7 @@ void Server::cmdNotice(int sockFd, Client &client, std::vector<std::string> args
     else
     {
         Client* targetClient = getClientByNick(target);
-        if (targetClient)
+        if (targetClient && targetClient->getsuccesLogin())
         {
             std::string noticeMsg = ":" + client.getPrefix() + " NOTICE " + targetClient->getdisplayNick() + " :" + message + "\r\n";
             sendMessage(targetClient->getFd(), noticeMsg);
@@ -103,17 +107,6 @@ void Server::cmdPing(int sockFd, Client &client, std::vector<std::string> args)
     }
     std::string msg = ":server PONG server :" + args[0] + "\r\n";
     sendMessage(sockFd, msg);
-}
-
-void Server::cmdPong(int sockFd, Client &client, std::vector<std::string> args)
-{
-    (void)sockFd;
-    client.setWaitingPong(false);
-    client.setLastPong(time(NULL));
-    std::cout << "[PONG] <- " << client.getPrefix();
-    if (!args.empty())
-        std::cout << " :" << args.back();
-    std::cout << std::endl;
 }
 
 void Server::cmdQuit(int sockFd, Client &client, std::vector<std::string> args)

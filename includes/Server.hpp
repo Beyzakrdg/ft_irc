@@ -12,7 +12,6 @@
 #include <unistd.h>
 #include <vector>
 #include <iostream>
-#include <ctime>
 #include <cctype>
 #include <cstdlib>
 #include <cstdio>
@@ -20,8 +19,6 @@
 #include <iostream>
 #include "Client.hpp"
 #include "Channel.hpp"
-
-#define PING_INTERVAL 30
 
 class Server {
 private:
@@ -48,11 +45,8 @@ private:
   void cmdPrivmsg(int sockFd, Client &client, std::vector<std::string> args);
   void cmdNotice(int sockFd, Client &client, std::vector<std::string> args);
   void cmdPing(int sockFd, Client &client, std::vector<std::string> args);
-  void cmdPong(int sockFd, Client &client, std::vector<std::string> args);
   void cmdQuit(int sockFd, Client &client, std::vector<std::string> args);
   void cmdPart(int sockFd, Client &client, std::vector<std::string> args);
-
-  void sendPings();
 
   void disconnectClient(int sockFd, const std::string &reason = "Connection lost");
   void flushOutBuffer(int sockFd);

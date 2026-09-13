@@ -41,8 +41,6 @@ void Server::executeCommand(int sockFd, std::string cmd, std::vector<std::string
         cmdNotice(sockFd, client, args);
     else if (cmd == "PING")
         cmdPing(sockFd, client, args);
-    else if (cmd == "PONG")
-        cmdPong(sockFd, client, args);
     else if (cmd == "QUIT")
         cmdQuit(sockFd, client, args);
     else if (cmd == "PART")
@@ -73,7 +71,7 @@ Client* Server::getClientByNick(std::string nick)
 
 Channel* Server::getChannelByName(std::string name)
 {
-    std::map<std::string, Channel>::iterator it = channels.find(name);
+    std::map<std::string, Channel>::iterator it = channels.find(Client::ircLower(name));
     if (it != channels.end())
         return &(it->second);
     return NULL;
@@ -111,6 +109,7 @@ void Server::cmdNick(int sockFd, Client &client, std::vector<std::string> args)
         sendMessage(sockFd, msg);
         return;
     }
+    client.setNickSent(true);
     if (args.empty())
     {
         std::string msg = ":server 431 " + getNickOrStar(client) + " :No nickname given\r\n";
@@ -190,6 +189,13 @@ void Server::cmdNick(int sockFd, Client &client, std::vector<std::string> args)
             sendMessage(targetFds[i], nickMsg);
         }
     }
+
+    if (!client.getsuccesLogin() && !client.getuserName().empty())
+    {
+        client.setsuccessLogin(true);
+        std::string welcome = ":server 001 " + client.getdisplayNick() + " :Welcome to the ft_irc network " + client.getdisplayNick() + "\r\n";
+        sendMessage(sockFd, welcome);
+    }
 }
 
 void Server::cmdUser(int sockFd, Client &client, std::vector<std::string> args)
@@ -206,7 +212,7 @@ void Server::cmdUser(int sockFd, Client &client, std::vector<std::string> args)
         sendMessage(sockFd, msg);
         return;
     }
-    if (client.getdisplayNick().empty())
+    if (!client.getNickSent())
     {
         std::string msg = ":server 451 * :You have not registered, send NICK first\r\n";
         sendMessage(sockFd, msg);
@@ -219,6 +225,8 @@ void Server::cmdUser(int sockFd, Client &client, std::vector<std::string> args)
         return;
     }
     client.setuserName(args[0]);
+    if (client.getdisplayNick().empty())
+        return;
     client.setsuccessLogin(true);
     std::string welcome = ":server 001 " + client.getdisplayNick() + " :Welcome to the ft_irc network " + client.getdisplayNick() + "\r\n";
     sendMessage(sockFd, welcome);

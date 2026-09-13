@@ -2,7 +2,7 @@
 
 Channel* Server::getValidChannel(int sockFd, Client &client, const std::string &name)
 {
-    std::map<std::string, Channel>::iterator it = channels.find(name);
+    std::map<std::string, Channel>::iterator it = channels.find(Client::ircLower(name));
     if (it == channels.end())
     {
         std::string msg = ":server 403 " + client.getdisplayNick() + " " + name + " :No such channel\r\n";
@@ -85,16 +85,18 @@ void Server::cmdJoin(int sockFd, Client &client, std::vector<std::string> args)
             continue;
         }
 
-        std::map<std::string, Channel>::iterator chanIt = channels.find(channelName);
+        std::string channelKey = Client::ircLower(channelName);
+        std::map<std::string, Channel>::iterator chanIt = channels.find(channelKey);
         if (chanIt == channels.end())
         {
             std::pair<std::map<std::string, Channel>::iterator, bool> ret =
-                channels.insert(std::make_pair(channelName, Channel(channelName)));
+                channels.insert(std::make_pair(channelKey, Channel(channelName)));
             chanIt = ret.first;
             chanIt->second.addOperator(&client);
         }
 
         Channel &chan = chanIt->second;
+        channelName = chan.getName();
 
         if (chan.isClientInChannel(&client))
             continue;
@@ -171,7 +173,7 @@ void Server::cmdPart(int sockFd, Client &client, std::vector<std::string> args)
     if (!checkInChannel(sockFd, client, *chan, channelName))
         return;
 
-    std::string partMsg = ":" + client.getPrefix() + " PART " + channelName;
+    std::string partMsg = ":" + client.getPrefix() + " PART " + chan->getName();
     if (!reason.empty())
         partMsg += " :" + reason;
     partMsg += "\r\n";
@@ -179,7 +181,7 @@ void Server::cmdPart(int sockFd, Client &client, std::vector<std::string> args)
     chan->broadcastMessage(partMsg, NULL, outBuffers, fds);
     chan->removeClient(&client);
     if (chan->getClientCount() == 0)
-        channels.erase(channelName);
+        channels.erase(Client::ircLower(channelName));
 }
 
 void Server::cmdTopic(int sockFd, Client &client, std::vector<std::string> args)
@@ -200,6 +202,7 @@ void Server::cmdTopic(int sockFd, Client &client, std::vector<std::string> args)
         return;
     if (!checkInChannel(sockFd, client, *chan, channelName))
         return;
+    channelName = chan->getName();
 
     if (args.size() == 1)
     {
@@ -267,11 +270,11 @@ void Server::cmdKick(int sockFd, Client &client, std::vector<std::string> args)
         return;
     }
 
-    std::string kickMsg = ":" + client.getPrefix() + " KICK " + channelName + " " + targetClient->getdisplayNick() + " :" + reason + "\r\n";
+    std::string kickMsg = ":" + client.getPrefix() + " KICK " + chan->getName() + " " + targetClient->getdisplayNick() + " :" + reason + "\r\n";
     chan->broadcastMessage(kickMsg, NULL, outBuffers, fds);
     chan->removeClient(targetClient);
     if (chan->getClientCount() == 0)
-        channels.erase(channelName);
+        channels.erase(Client::ircLower(channelName));
 }
 
 void Server::cmdInvite(int sockFd, Client &client, std::vector<std::string> args)
@@ -311,6 +314,7 @@ void Server::cmdInvite(int sockFd, Client &client, std::vector<std::string> args
     }
 
     targetNick = targetClient->getdisplayNick();
+    channelName = chan->getName();
     chan->addInvite(targetNick);
     std::string replyMsg = ":server 341 " + client.getdisplayNick() + " " + targetNick + " " + channelName + "\r\n";
     sendMessage(sockFd, replyMsg);
@@ -437,6 +441,7 @@ void Server::cmdMode(int sockFd, Client &client, std::vector<std::string> args)
     Channel *chan = getValidChannel(sockFd, client, target);
     if (!chan)
         return;
+    target = chan->getName();
 
     if (args.size() == 1)
     {
