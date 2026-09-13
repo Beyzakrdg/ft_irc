@@ -65,7 +65,7 @@ Client* Server::getClientByNick(std::string nick)
 {
     for (std::map<int, Client>::iterator it = clients.begin(); it != clients.end(); ++it)
     {
-        if (it->second.getdisplayNick() == nick)
+        if (Client::nickEquals(it->second.getdisplayNick(), nick))
             return &(it->second);
     }
     return NULL;

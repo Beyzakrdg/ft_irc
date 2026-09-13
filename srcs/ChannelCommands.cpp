@@ -267,7 +267,7 @@ void Server::cmdKick(int sockFd, Client &client, std::vector<std::string> args)
         return;
     }
 
-    std::string kickMsg = ":" + client.getPrefix() + " KICK " + channelName + " " + targetNick + " :" + reason + "\r\n";
+    std::string kickMsg = ":" + client.getPrefix() + " KICK " + channelName + " " + targetClient->getdisplayNick() + " :" + reason + "\r\n";
     chan->broadcastMessage(kickMsg, NULL, outBuffers, fds);
     chan->removeClient(targetClient);
     if (chan->getClientCount() == 0)
@@ -310,6 +310,7 @@ void Server::cmdInvite(int sockFd, Client &client, std::vector<std::string> args
         return;
     }
 
+    targetNick = targetClient->getdisplayNick();
     chan->addInvite(targetNick);
     std::string replyMsg = ":server 341 " + client.getdisplayNick() + " " + targetNick + " " + channelName + "\r\n";
     sendMessage(sockFd, replyMsg);
@@ -346,15 +347,14 @@ void Server::handleModeK(Client &client, Channel &chan, const std::string &targe
 {
     if (adding)
     {
-        if (argIndex < args.size())
-        {
-            chan.setKey(args[argIndex++]);
-            std::string broadcast = ":" + client.getPrefix() + " MODE " + target + " +k " + chan.getKey() + "\r\n";
-            chan.broadcastMessage(broadcast, NULL, outBuffers, fds);
-        }
+        chan.setKey(args[argIndex++]);
+        std::string broadcast = ":" + client.getPrefix() + " MODE " + target + " +k " + chan.getKey() + "\r\n";
+        chan.broadcastMessage(broadcast, NULL, outBuffers, fds);
     }
     else
     {
+        if (argIndex < args.size())
+            argIndex++;
         chan.setKey("");
         std::string broadcast = ":" + client.getPrefix() + " MODE " + target + " -k\r\n";
         chan.broadcastMessage(broadcast, NULL, outBuffers, fds);
@@ -364,9 +364,6 @@ void Server::handleModeK(Client &client, Channel &chan, const std::string &targe
 void Server::handleModeO(int sockFd, Client &client, Channel &chan, const std::string &target, bool adding,
                           std::vector<std::string> &args, size_t &argIndex)
 {
-    if (argIndex >= args.size())
-        return;
-
     std::string targetNick   = args[argIndex++];
     Client      *targetClient = getClientByNick(targetNick);
 
@@ -383,6 +380,7 @@ void Server::handleModeO(int sockFd, Client &client, Channel &chan, const std::s
         return;
     }
 
+    targetNick = targetClient->getdisplayNick();
     if (adding)
     {
         chan.addOperator(targetClient);
@@ -402,18 +400,16 @@ void Server::handleModeL(Client &client, Channel &chan, const std::string &targe
 {
     if (adding)
     {
-        if (argIndex < args.size())
-        {
-            int limit = std::atoi(args[argIndex++].c_str());
-            if (limit > 0)
-            {
-                chan.setUserLimit(limit);
-                char buf[32];
-                snprintf(buf, sizeof(buf), "%d", limit);
-                std::string broadcast = ":" + client.getPrefix() + " MODE " + target + " +l " + buf + "\r\n";
-                chan.broadcastMessage(broadcast, NULL, outBuffers, fds);
-            }
-        }
+        const char *param = args[argIndex++].c_str();
+        char *end;
+        long limit = std::strtol(param, &end, 10);
+        if (*param == '\0' || *end != '\0' || limit <= 0 || limit > INT_MAX)
+            return;
+        chan.setUserLimit(static_cast<int>(limit));
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%ld", limit);
+        std::string broadcast = ":" + client.getPrefix() + " MODE " + target + " +l " + buf + "\r\n";
+        chan.broadcastMessage(broadcast, NULL, outBuffers, fds);
     }
     else
     {
@@ -445,11 +441,27 @@ void Server::cmdMode(int sockFd, Client &client, std::vector<std::string> args)
     if (args.size() == 1)
     {
         std::string modes = "+";
+        std::string params;
+        bool showParams = chan->isClientInChannel(&client);
         if (chan->isInviteOnly())    modes += "i";
         if (chan->isTopicRestricted()) modes += "t";
-        if (!chan->getKey().empty()) modes += "k";
-        if (chan->getUserLimit() != -1) modes += "l";
-        std::string msg = ":server 324 " + client.getdisplayNick() + " " + target + " " + modes + "\r\n";
+        if (!chan->getKey().empty())
+        {
+            modes += "k";
+            if (showParams)
+                params += " " + chan->getKey();
+        }
+        if (chan->getUserLimit() != -1)
+        {
+            modes += "l";
+            if (showParams)
+            {
+                char buf[32];
+                snprintf(buf, sizeof(buf), "%d", chan->getUserLimit());
+                params += std::string(" ") + buf;
+            }
+        }
+        std::string msg = ":server 324 " + client.getdisplayNick() + " " + target + " " + modes + params + "\r\n";
         sendMessage(sockFd, msg);
         return;
     }
@@ -468,6 +480,11 @@ void Server::cmdMode(int sockFd, Client &client, std::vector<std::string> args)
             adding = true;
         else if (m == '-')
             adding = false;
+        else if ((m == 'o' || (adding && (m == 'k' || m == 'l'))) && argIndex >= args.size())
+        {
+            std::string msg = ":server 461 " + client.getdisplayNick() + " MODE :Not enough parameters\r\n";
+            sendMessage(sockFd, msg);
+        }
         else if (m == 'i')
             handleModeI(client, *chan, target, adding);
         else if (m == 't')

@@ -99,3 +99,30 @@ void Client::eraseBuffer(size_t start, size_t length)
 {
     buffer.erase(start, length);
 }
+
+static char ircLower(char c)
+{
+    if (c >= 'A' && c <= 'Z')
+        return c + ('a' - 'A');
+    if (c == '[')
+        return '{';
+    if (c == ']')
+        return '}';
+    if (c == '\\')
+        return '|';
+    if (c == '~')
+        return '^';
+    return c;
+}
+
+bool Client::nickEquals(const std::string &a, const std::string &b)
+{
+    if (a.length() != b.length())
+        return false;
+    for (size_t i = 0; i < a.length(); i++)
+    {
+        if (ircLower(a[i]) != ircLower(b[i]))
+            return false;
+    }
+    return true;
+}

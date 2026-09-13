@@ -48,7 +48,7 @@ void Server::cmdPrivmsg(int sockFd, Client &client, std::vector<std::string> arg
         Client* targetClient = getClientByNick(target);
         if (targetClient)
         {
-            std::string privMsg = ":" + client.getPrefix() + " PRIVMSG " + target + " :" + message + "\r\n";
+            std::string privMsg = ":" + client.getPrefix() + " PRIVMSG " + targetClient->getdisplayNick() + " :" + message + "\r\n";
             sendMessage(targetClient->getFd(), privMsg);
         }
         else
@@ -86,7 +86,7 @@ void Server::cmdNotice(int sockFd, Client &client, std::vector<std::string> args
         Client* targetClient = getClientByNick(target);
         if (targetClient)
         {
-            std::string noticeMsg = ":" + client.getPrefix() + " NOTICE " + target + " :" + message + "\r\n";
+            std::string noticeMsg = ":" + client.getPrefix() + " NOTICE " + targetClient->getdisplayNick() + " :" + message + "\r\n";
             sendMessage(targetClient->getFd(), noticeMsg);
         }
     }

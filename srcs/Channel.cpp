@@ -111,7 +111,7 @@ bool Channel::isInvited(std::string nick) const
 {
     for (size_t i = 0; i < invitedNicks.size(); i++)
     {
-        if (invitedNicks[i] == nick)
+        if (Client::nickEquals(invitedNicks[i], nick))
             return true;
     }
     return false;
@@ -121,7 +121,7 @@ void Channel::removeInvite(std::string nick)
 {
     for (std::vector<std::string>::iterator it = invitedNicks.begin(); it != invitedNicks.end(); ++it)
     {
-        if (*it == nick)
+        if (Client::nickEquals(*it, nick))
         {
             invitedNicks.erase(it);
             break;

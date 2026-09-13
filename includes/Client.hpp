@@ -43,6 +43,8 @@ public:
   void appendToBuffer(std::string data);
   void clearBuffer();
   void eraseBuffer(size_t start, size_t length);
+
+  static bool nickEquals(const std::string &a, const std::string &b);
 };
 
 #endif

@@ -16,6 +16,7 @@
 #include <cctype>
 #include <cstdlib>
 #include <cstdio>
+#include <climits>
 #include <iostream>
 #include "Client.hpp"
 #include "Channel.hpp"
